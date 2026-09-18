@@ -32,6 +32,12 @@ function isTouchUI(){
 function syncTouchUI(){
   document.documentElement?.classList?.toggle('touch-ui',isTouchUI());
 }
+function syncSoundButton(){
+  const on=!!state.sound;
+  $('sound')?.classList.toggle('sound-on',on);
+  $('sound')?.setAttribute('aria-label',on?'Wyłącz dźwięk':'Włącz dźwięk');
+  if($('sound-label'))$('sound-label').textContent=`DŹWIĘK: ${on?'ON':'OFF'}`;
+}
 const canvas=$('game'),ctx=canvas.getContext('2d'),mini=$('minimap'),mc=mini.getContext('2d');
 const GROUP_COL=['#d5ed91','#8fd4e8','#e8c56a','#e89b7a'];
 const pointers=new Map();
@@ -81,7 +87,7 @@ function initMission(seed=freshSeed(),retry=false,saved=null,opts={}){
   state.groupLeader={};
   for(const u of squad)if(u.hp>0&&state.groupLeader[u.group]==null)state.groupLeader[u.group]=u.id;
   buildTerrain();buildSquadUI();updateUI();resize();drawHill();
-  if($('touch-mode')){$('touch-mode').textContent='TRYB: RUCH';$('touch-mode').classList.remove('active');}
+  if($('touch-mode')){$('touch-mode').textContent='RUCH';$('touch-mode').classList.remove('active');$('touch-mode').setAttribute('aria-label','Tryb: ruch');}
   $('operation-title').textContent=map.operation.name;$('mission-terrain').textContent=`${map.layout.name} · ${map.cols} × ${map.rows}`;$('mission-difficulty').textContent=`ZAGROŻENIE ${map.difficulty.level}/13`; $('biome-label').textContent=map.biome.label;
   document.querySelector('.operation-number').innerHTML=`${format(state.mission)} <span>/ ∞</span>`;
   $('header-mission').textContent=`MISJA ${format(state.mission)}`;$('seed-label').textContent=format(seed,8);$('weather').textContent=map.biome.sky;
@@ -254,6 +260,8 @@ function updateUI(){
   for(const[id,done]of[['enemy-objective',status.primary],['hut-objective',status.secondary]]){$(id).classList.toggle('done',done);$(id).querySelector('.check').textContent=done?'✓':'·';}
   $('objective-count').textContent=`${Number(status.primary)+Number(status.secondary)}/2`;
   $('alive-count').textContent=format(liveSquad().length);$('grenades').textContent=format(state.grenades);$('rockets').textContent=format(state.rockets);$('score').textContent=format(state.score,4);
+  if($('touch-grenade-n'))$('touch-grenade-n').textContent=format(state.grenades);
+  if($('touch-rocket-n'))$('touch-rocket-n').textContent=format(state.rockets);
   $('timer').textContent=`${format(Math.floor(state.elapsed/60))}:${format(Math.floor(state.elapsed%60))}`;
   for(const u of squad){
     $(`soldier-${u.id}`).classList.toggle('selected',state.selected.has(u.id)&&u.hp>0);
@@ -276,8 +284,8 @@ function syncMini(){
   $('minimap-wrap')?.classList.toggle('collapsed',!!state.miniHidden);
   $('battlefield')?.classList.toggle('mini-hidden',!!state.miniHidden);
   if($('touch-mini')){
-    $('touch-mini').textContent=state.miniHidden?'POKAŻ MAPĘ':'UKRYJ MAPĘ';
-    $('touch-mini').classList.toggle('active',!state.miniHidden);
+    $('touch-mini').textContent='MAPA';
+    $('touch-mini').classList.toggle('map-off',!!state.miniHidden);
     $('touch-mini').setAttribute('aria-label',state.miniHidden?'Pokaż mapę taktyczną':'Ukryj mapę taktyczną');
   }
 }
@@ -783,13 +791,14 @@ function showOverlay(kind){
   if(kind==='map'||kind==='briefing')state.phase=kind;
   $('overlay').classList.remove('hidden');
   $('overlay').classList.toggle('hub',kind==='map');
+  $('overlay').classList.toggle('paused',kind==='paused');
   $('overlay').scrollTop=0;
   const left=recruitsLeft(state.campaign);
   const promo=(state.promotions||[]).map(p=>`${p.name} → ${RANKS[p.to]}${p.medals?.length?' '+p.medals.map(id=>MEDALS[id].glyph).join(''):''}`).join(' · ');
   const data={
     map:{eyebrow:`TEATR DZIAŁAŃ / ${format(state.mission,3)}`,title:map.operation.name,description:`${map.operation.brief} ${map.layout.hint}`,button:'WYRUSZ',secondary:'⟳  Wylosuj inny teren'},
     briefing:{eyebrow:`DEPESZA Z DOWÓDZTWA / ${format(state.mission,3)}`,title:map.operation.name,description:`${map.operation.brief} ${map.layout.hint}`,button:'ROZPOCZNIJ OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
-    paused:{eyebrow:state.bootcamp?'TRENING WSTRZYMANY':'ŁĄCZNOŚĆ WSTRZYMANA',title:state.bootcamp?'Tu też giną<br>na zawsze.':'Chwila<br>na oddech.',description:state.bootcamp?'Manekiny nie strzelają. Polegli znikają z kolejki. WRÓĆ DO MAPY kończy trening.':isTouchUI()?'Oddział czeka. TRYB RUCH: stuknij mapę, żeby wysłać oddział. TRYB OGIEŃ: przytrzymaj palec, żeby strzelać. PODZIEL, SCAL i LASSO zarządzają grupami, CENTER wraca kamerę. Żołnierze sami strzelają do wrogów w zasięgu.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:state.bootcamp?'↖  Wróć do mapy':'↻  Rozpocznij misję od nowa'},
+    paused:{eyebrow:state.bootcamp?'TRENING WSTRZYMANY':'ŁĄCZNOŚĆ WSTRZYMANA',title:state.bootcamp?'Tu też giną<br>na zawsze.':'Chwila<br>na oddech.',description:state.bootcamp?'Manekiny nie strzelają. Polegli znikają z kolejki. WRÓĆ DO MAPY kończy trening.':isTouchUI()?'Oddział czeka. RUCH: stuknij mapę. OGIEŃ: przytrzymaj palec. Stuknij żołnierza, żeby prowadzić grupę.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:state.bootcamp?'↖  Wróć do mapy':'↻  Rozpocznij misję od nowa'},
     won:{eyebrow:`RAPORT Z MISJI / ${format(state.mission,3)}`,title:'Sektor<br>zabezpieczony.',description:`${'★'.repeat(state.stars)}${'☆'.repeat(3-state.stars)} · ${liveSquad().length} z 4 żołnierzy wraca do bazy. Premia: +${state.bonus}. ${promo||'Ocalali awansują.'} Gwiazdki: wykonanie misji, pełny oddział, czas poniżej ${Math.floor(map.parTime/60)}:${format(map.parTime%60)}.`,button:'NASTĘPNA MISJA',secondary:'⟳  Rozegraj ten teren ponownie'},
     lost:{eyebrow:'RAPORT Z MISJI / UTRACONO KONTAKT',title:'To jeszcze<br>nie koniec.',description:`Polegli znikają na zawsze. Na wzgórzu zostało ${left} ochotników. Dziel oddział na przesmyku, oszczędzaj ładunki na bunkry.`,button:'PONÓW OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
     over:{eyebrow:'KAMPANIA ZAKOŃCZONA',title:'Wzgórze<br>bohaterów.',description:'360 ochotników zeszło z zielonego wzgórza. Wojna pożarła ich wszystkich. War has never been so much fun.',button:'NOWA KAMPANIA',secondary:'—'}
@@ -858,7 +867,7 @@ function beep(type){
     const now=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
     const f={shot:110,explosion:75,move:550,throw:260,pickup:850,start:440,win:660,loss:180}[type]||400,dur=type==='explosion'?.5:type==='shot'?.06:.16;
     o.type=type==='shot'||type==='explosion'?'sawtooth':'square';o.frequency.setValueAtTime(f,now);o.frequency.exponentialRampToValueAtTime(type==='explosion'?20:type==='win'?1100:f*.6,now+dur);g.gain.setValueAtTime(type==='shot'?.018:.045,now);g.gain.exponentialRampToValueAtTime(.0001,now+dur);o.start(now);o.stop(now+dur);
-  }catch{state.sound=false;$('sound').textContent='DŹWIĘK: OFF';}
+  }catch{state.sound=false;syncSoundButton();}
 }
 
 function beginHeavy(type){if(state.phase!=='playing')return;const u=selectedSquad()[0];state.heavyAim={type,from:u?{x:u.x,y:u.y}:{x:state.pointer.worldX,y:state.pointer.worldY},to:{x:state.pointer.worldX,y:state.pointer.worldY}};}
@@ -888,8 +897,9 @@ canvas.addEventListener('pointerdown',e=>{
     state.firing=true;canvas.setPointerCapture(e.pointerId);return;
   }
   if(e.button===0){
-    const clicked=liveSquad().find(u=>distance(u,p)<15);
-    if(clicked&&e.pointerType!=='touch'){promoteLeader(clicked.id);return;}
+    const hit=e.pointerType==='touch'?22:15;
+    const clicked=liveSquad().find(u=>distance(u,p)<hit);
+    if(clicked){promoteLeader(clicked.id);return;}
     issueMove(p);
   }
 });
@@ -920,7 +930,7 @@ $('new-campaign').onclick=()=>{
 };
 $('pause').onclick=pause;$('regroup').onclick=regroup;$('split').onclick=splitSquad;$('merge').onclick=mergeSquad;
 $('center-cam').onclick=()=>{state.follow=true;toast('Kamera śledzi oddział');};
-$('sound').onclick=()=>{state.sound=!state.sound;$('sound').textContent=`DŹWIĘK: ${state.sound?'ON':'OFF'}`;$('sound').setAttribute('aria-label',state.sound?'Wyłącz dźwięk':'Włącz dźwięk');beep('move');};
+$('sound').onclick=()=>{state.sound=!state.sound;syncSoundButton();beep('move');};
 $('deploy').onclick=()=>{
   if(state.phase==='over'){$('new-campaign').onclick();return;}
   if(state.phase==='won'){state.mission++;initMission();state.phase='map';showOverlay('map');saveProgress();return;}
@@ -936,9 +946,11 @@ $('reroll').onclick=()=>{
 $('copy-seed').onclick=async()=>{const url=new URL(location.href);url.searchParams.set('seed',map.seed);url.searchParams.set('mission',state.mission);try{await navigator.clipboard.writeText(url.href);toast('Skopiowano link z ziarnem mapy');}catch{toast(`Ziarno mapy: ${map.seed}, misja: ${state.mission}`);}};
 $('touch-mode').onclick=()=>{
   state.touchMode=state.touchMode==='move'?'fire':'move';
-  $('touch-mode').textContent=`TRYB: ${state.touchMode==='move'?'RUCH':'OGIEŃ'}`;
-  $('touch-mode').classList.toggle('active',state.touchMode==='fire');
-  toast(state.touchMode==='move'?'Stuknij mapę, żeby wysłać oddział':'Przytrzymaj palec, żeby strzelać');
+  const fire=state.touchMode==='fire';
+  $('touch-mode').textContent=fire?'OGIEŃ':'RUCH';
+  $('touch-mode').classList.toggle('active',fire);
+  $('touch-mode').setAttribute('aria-label',fire?'Tryb: ogień':'Tryb: ruch');
+  toast(fire?'Przytrzymaj palec, żeby strzelać':'Stuknij mapę, żeby wysłać oddział');
 };
 $('touch-grenade').onpointerdown=e=>{e.preventDefault();beginHeavy('grenade');pointers.set(e.pointerId,{role:'heavy'});};
 $('touch-rocket').onpointerdown=e=>{e.preventDefault();beginHeavy('rocket');pointers.set(e.pointerId,{role:'heavy'});};
@@ -946,7 +958,7 @@ $('touch-grenade').onclick=()=>{if(!state.heavyAim)throwGrenade();};
 $('touch-rocket').onclick=()=>{if(!state.heavyAim)throwRocket();};
 $('touch-split').onclick=splitSquad;$('touch-merge').onclick=mergeSquad;
 $('touch-lasso').onclick=()=>{state.lassoMode=!state.lassoMode;$('touch-lasso').classList.toggle('active',state.lassoMode);toast(state.lassoMode?'Zakreśl pętlę wokół żołnierzy':'Lasso wyłączone');};
-$('touch-center').onclick=()=>{state.follow=true;regroup();};
+$('touch-center').onclick=()=>{state.follow=true;toast('Kamera śledzi oddział');};
 $('touch-mini')&&($('touch-mini').onclick=toggleMini);
 $('hide-mini')&&($('hide-mini').onclick=toggleMini);
 $('show-mini')&&($('show-mini').onclick=toggleMini);
@@ -954,6 +966,7 @@ $('bootcamp')&&($('bootcamp').onclick=enterBootCamp);
 $('toggle-graves')&&($('toggle-graves').onclick=()=>{state.graveOpen=!state.graveOpen;showOverlay(state.phase==='map'?'map':state.phase);});
 new ResizeObserver(resize).observe($('battlefield'));
 syncTouchUI();
+syncSoundButton();
 for(const query of ['(pointer: coarse)','(hover: none)','(max-width: 600px)','(max-height: 500px)']){
   window.matchMedia?.(query)?.addEventListener?.('change',syncTouchUI);
 }

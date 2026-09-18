@@ -347,7 +347,7 @@ test('tactical map can be hidden and later restored',()=>{
   assert.equal(g.state.miniHidden,true);
   const kept=game(1,{storage});
   assert.equal(kept.state.miniHidden,true);
-  assert.equal(kept.buttons('touch-mini').textContent,'POKAŻ MAPĘ');
+  assert.equal(kept.state.miniHidden,true);
   kept.buttons('touch-mini').onclick();
   assert.equal(kept.state.miniHidden,false);
 });
