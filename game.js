@@ -396,18 +396,22 @@ function wreckVehicle(v,amount=999){
   v.path=[];for(const id of [...v.occupants]){const u=squad.find(s=>s.id===id);if(u){u.vehicleId=null;if(u.hp>0)damageSoldier(u,100);}}
   v.occupants=[];state.decals.push({x:v.x,y:v.y,type:'crater'});toast(`${({jeep:'Dżip',tank:'Czołg',heli:'Helikopter',turret:'Wieżyczka'})[v.type]||'Pojazd'} zniszczony`);
 }
-function toggleVehicle(){
+function toggleVehicle(target){
   const units=selectedSquad();if(!units.length)return;
-  if(units.every(u=>u.vehicleId!=null)){exitVehicle(units);return;}
-  const v=(map.vehicles||[]).filter(v=>v.hp>0).sort((a,b)=>distance(a,units[0])-distance(b,units[0]))[0];
-  if(!v||distance(v,units[0])>36){toast('Podejdź do dżipa, czołgu, helikoptera lub wieżyczki (E).');return;}
-  const cap=vehicleCapacity(v.type);
-  for(const u of units){
-    if(v.occupants.length>=cap)break;
-    if(u.vehicleId!=null)continue;
-    u.vehicleId=v.id;u.path=[];v.occupants.push(u.id);
+  const boarded=units.filter(u=>vehicleOf(u)),onFoot=units.filter(u=>!vehicleOf(u));
+  const focus=onFoot[0]||units[0];
+  const v=target&&target.hp>0?target:(map.vehicles||[]).filter(v=>v.hp>0).sort((a,b)=>distance(a,focus)-distance(b,focus))[0];
+  const cap=v?vehicleCapacity(v.type):0;
+  if(v&&onFoot.length&&v.occupants.length<cap&&distance(v,focus)<=36){
+    for(const u of onFoot){
+      if(v.occupants.length>=cap)break;
+      u.vehicleId=v.id;u.path=[];v.occupants.push(u.id);
+    }
+    toast(v.type==='turret'?'Obsada wieżyczki':`Wsiadacie do: ${v.type}`);beep('pickup');
+    return;
   }
-  toast(v.type==='turret'?'Obsada wieżyczki':`Wsiadacie do: ${v.type}`);beep('pickup');
+  if(boarded.length){exitVehicle(boarded);return;}
+  toast('Podejdź do dżipa, czołgu, helikoptera lub wieżyczki (E / POJAZD).');
 }
 function exitVehicle(units){
   for(const u of units){
@@ -532,6 +536,7 @@ function tick(dt){
         for(const h of map.huts)if(h.hp>0&&Math.abs(b.x-h.x)<30&&Math.abs(b.y-h.y)<25){b.life=0;spark(b.x,b.y);if(!state.hutHint){state.hutHint=true;toast('Posterunki są opancerzone — użyj granatu (G) lub rakiety (R).');}break;}
         for(const v of map.vehicles||[])if(v.hp>0&&distance(b,v)<18){wreckVehicle(v,b.damage);b.life=0;spark(b.x,b.y);break;}
         for(const tur of map.turrets||[])if(tur.hp>0&&distance(b,tur)<16){tur.hp-=b.damage;b.life=0;spark(b.x,b.y);break;}
+        if(b.life>0){for(const m of map.mines||[])if(!m.exploded&&distance(b,m)<16){triggerMine(m,true);b.life=0;spark(b.x,b.y);break;}}
       }
     }b.life-=dt;
   }
@@ -547,7 +552,7 @@ function tick(dt){
   for(const m of map.mines||[]){
     if(m.exploded||!m.armed)continue;
     const hit=[...alive,...map.enemies.filter(e=>e.hp>0),(map.vehicles||[]).filter(v=>v.hp>0&&v.type!=='heli')].flat().find(u=>u&&distance(u,m)<20);
-    if(hit){m.exploded=true;m.armed=false;explode(m,m.kind==='bamboo'?90:120);toast(m.kind==='bamboo'?'Pułapka bambusowa!':'Mina!');}
+    if(hit)triggerMine(m);
   }
   const spawned=spawnFromHuts(map,dt);
   if(spawned&&!spawnHint){spawnHint=true;toast('Wróg wylewa się z budynku — wysadź posterunek!');}
@@ -561,6 +566,12 @@ function tick(dt){
   if(state.phase==='playing'){saveTimer+=dt;if(saveTimer>=5)saveProgress();}
 }
 function spark(x,y){state.particles.push({x,y,vx:0,vy:0,life:.12,max:.12,color:'#f8e4ac',size:4});}
+function triggerMine(m,shot=false){
+  if(!m||m.exploded)return;
+  m.exploded=true;m.armed=false;
+  explode(m,m.kind==='bamboo'?90:120);
+  toast(shot?(m.kind==='bamboo'?'Pułapka bambusowa zestrzelona':'Mina zestrzelona'):(m.kind==='bamboo'?'Pułapka bambusowa!':'Mina!'));
+}
 
 function drawGate(c,g){
   rect(c,g.x-18,g.y-10,36,20,'#5c5340');rect(c,g.x-16,g.y-8,32,16,'#7a6e52');
@@ -798,7 +809,7 @@ function showOverlay(kind){
   const data={
     map:{eyebrow:`TEATR DZIAŁAŃ / ${format(state.mission,3)}`,title:map.operation.name,description:`${map.operation.brief} ${map.layout.hint}`,button:'WYRUSZ',secondary:'⟳  Wylosuj inny teren'},
     briefing:{eyebrow:`DEPESZA Z DOWÓDZTWA / ${format(state.mission,3)}`,title:map.operation.name,description:`${map.operation.brief} ${map.layout.hint}`,button:'ROZPOCZNIJ OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
-    paused:{eyebrow:state.bootcamp?'TRENING WSTRZYMANY':'ŁĄCZNOŚĆ WSTRZYMANA',title:state.bootcamp?'Tu też giną<br>na zawsze.':'Chwila<br>na oddech.',description:state.bootcamp?'Manekiny nie strzelają. Polegli znikają z kolejki. WRÓĆ DO MAPY kończy trening.':isTouchUI()?'Oddział czeka. RUCH: stuknij mapę. OGIEŃ: przytrzymaj palec. Stuknij żołnierza, żeby prowadzić grupę.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:state.bootcamp?'↖  Wróć do mapy':'↻  Rozpocznij misję od nowa'},
+    paused:{eyebrow:state.bootcamp?'TRENING WSTRZYMANY':'ŁĄCZNOŚĆ WSTRZYMANA',title:state.bootcamp?'Tu też giną<br>na zawsze.':'Chwila<br>na oddech.',description:state.bootcamp?'Manekiny nie strzelają. Polegli znikają z kolejki. WRÓĆ DO MAPY kończy trening.':isTouchUI()?'Oddział czeka. RUCH: stuknij mapę. OGIEŃ: przytrzymaj palec — minę zestrzelisz z dystansu. POJAZD: wsiądź albo wysiądź przy dżipie. Stuknij żołnierza, żeby prowadzić grupę.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:state.bootcamp?'↖  Wróć do mapy':'↻  Rozpocznij misję od nowa'},
     won:{eyebrow:`RAPORT Z MISJI / ${format(state.mission,3)}`,title:'Sektor<br>zabezpieczony.',description:`${'★'.repeat(state.stars)}${'☆'.repeat(3-state.stars)} · ${liveSquad().length} z 4 żołnierzy wraca do bazy. Premia: +${state.bonus}. ${promo||'Ocalali awansują.'} Gwiazdki: wykonanie misji, pełny oddział, czas poniżej ${Math.floor(map.parTime/60)}:${format(map.parTime%60)}.`,button:'NASTĘPNA MISJA',secondary:'⟳  Rozegraj ten teren ponownie'},
     lost:{eyebrow:'RAPORT Z MISJI / UTRACONO KONTAKT',title:'To jeszcze<br>nie koniec.',description:`Polegli znikają na zawsze. Na wzgórzu zostało ${left} ochotników. Dziel oddział na przesmyku, oszczędzaj ładunki na bunkry.`,button:'PONÓW OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
     over:{eyebrow:'KAMPANIA ZAKOŃCZONA',title:'Wzgórze<br>bohaterów.',description:'360 ochotników zeszło z zielonego wzgórza. Wojna pożarła ich wszystkich. War has never been so much fun.',button:'NOWA KAMPANIA',secondary:'—'}
@@ -900,6 +911,12 @@ canvas.addEventListener('pointerdown',e=>{
     const hit=e.pointerType==='touch'?22:15;
     const clicked=liveSquad().find(u=>distance(u,p)<hit);
     if(clicked){promoteLeader(clicked.id);return;}
+    const tapV=(e.pointerType==='touch'?30:22);
+    const vehicle=(map.vehicles||[]).filter(v=>v.hp>0).find(v=>distance(v,p)<tapV);
+    if(vehicle){
+      const units=selectedSquad();
+      if(units.some(u=>u.vehicleId===vehicle.id||distance(u,vehicle)<=36)){toggleVehicle(vehicle);return;}
+    }
     issueMove(p);
   }
 });
@@ -957,6 +974,7 @@ $('touch-rocket').onpointerdown=e=>{e.preventDefault();beginHeavy('rocket');poin
 $('touch-grenade').onclick=()=>{if(!state.heavyAim)throwGrenade();};
 $('touch-rocket').onclick=()=>{if(!state.heavyAim)throwRocket();};
 $('touch-split').onclick=splitSquad;$('touch-merge').onclick=mergeSquad;
+$('touch-vehicle')&&($('touch-vehicle').onclick=()=>toggleVehicle());
 $('touch-lasso').onclick=()=>{state.lassoMode=!state.lassoMode;$('touch-lasso').classList.toggle('active',state.lassoMode);toast(state.lassoMode?'Zakreśl pętlę wokół żołnierzy':'Lasso wyłączone');};
 $('touch-center').onclick=()=>{state.follow=true;toast('Kamera śledzi oddział');};
 $('touch-mini')&&($('touch-mini').onclick=toggleMini);
