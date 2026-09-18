@@ -43,7 +43,8 @@ const GROUP_COL=['#d5ed91','#8fd4e8','#e8c56a','#e89b7a'];
 const pointers=new Map();
 const MINI_PREF_KEY='tiny-front-minimap';
 function readMiniPref(){try{return localStorage.getItem(MINI_PREF_KEY)==='hidden';}catch{return false;}}
-const state={phase:'map',mission:1,score:0,grenades:6,rockets:2,elapsed:0,kills:0,deaths:0,hutsDone:0,selected:new Set([0,1,2,3]),bullets:[],particles:[],bombs:[],decals:[],rings:[],camera:{x:0,y:0},pointer:{x:0,y:0,worldX:0,worldY:0},firing:false,keys:new Set(),follow:true,touchMode:'move',lassoMode:false,heavyAim:null,lasso:null,shake:0,sound:false,toastTime:0,uiTime:0,campaign:createCampaign(),bootcamp:false,groupLeader:{0:0},promotions:[],graveOpen:false,miniHidden:readMiniPref()};
+const BOARD_RANGE=56;
+const state={phase:'map',mission:1,score:0,grenades:6,rockets:2,elapsed:0,kills:0,deaths:0,hutsDone:0,selected:new Set([0,1,2,3]),bullets:[],particles:[],bombs:[],decals:[],rings:[],camera:{x:0,y:0},pointer:{x:0,y:0,worldX:0,worldY:0},firing:false,keys:new Set(),follow:true,touchMode:'move',lassoMode:false,heavyAim:null,lasso:null,shake:0,sound:false,toastTime:0,uiTime:0,campaign:createCampaign(),bootcamp:false,groupLeader:{0:0},promotions:[],graveOpen:false,miniHidden:readMiniPref(),pendingBoard:null};
 let saveActive=false,saveTimer=0,saveFailed=false,missionLinkCleared=false,spawnHint=false;
 let map,squad,terrain,miniTerrain,viewW=1000,viewH=700,scale=1,audioCtx,lastTime=0,visualTime=0;
 const urlParams=new URLSearchParams(location.search),initialSeed=Number(urlParams.get('seed'));
@@ -60,7 +61,7 @@ function initMission(seed=freshSeed(),retry=false,saved=null,opts={}){
   const boot=!!(opts.bootcamp||saved?.state?.bootcamp);
   map=saved?.map??(boot?generateBootCamp(seed):generateMap(seed,state.mission));
   if(saved?.map)applyGates(map);
-  Object.assign(state,{elapsed:0,kills:0,deaths:0,hutsDone:0,bullets:[],particles:[],bombs:[],decals:[],rings:[],firing:false,grenades:map.difficulty.grenades,rockets:map.difficulty.rockets,selected:new Set([0,1,2,3]),follow:true,shake:0,hutHint:false,evacReady:false,stars:0,bonus:0,heavyAim:null,lasso:null,lassoMode:false,touchMode:'move',bootcamp:!!map.bootcamp,groupLeader:{0:0},promotions:[],graveOpen:false});
+  Object.assign(state,{elapsed:0,kills:0,deaths:0,hutsDone:0,bullets:[],particles:[],bombs:[],decals:[],rings:[],firing:false,grenades:map.difficulty.grenades,rockets:map.difficulty.rockets,selected:new Set([0,1,2,3]),follow:true,shake:0,hutHint:false,evacReady:false,stars:0,bonus:0,heavyAim:null,lasso:null,lassoMode:false,touchMode:'move',bootcamp:!!map.bootcamp,groupLeader:{0:0},promotions:[],graveOpen:false,pendingBoard:null});
   if(!retry)state.missionStartScore=state.score;
   spawnHint=false;pointers.clear();
   state.camera.x=map.spawn.x;state.camera.y=map.spawn.y;
@@ -304,8 +305,9 @@ function resize(){
 function clampCamera(){const halfW=viewW/scale/2,halfH=viewH/scale/2;state.camera.x=map.width<=halfW*2?map.width/2:Math.max(halfW,Math.min(map.width-halfW,state.camera.x));state.camera.y=map.height<=halfH*2?map.height/2:Math.max(halfH,Math.min(map.height-halfH,state.camera.y));}
 function screenToWorld(x,y){return{x:(x-viewW/2)/scale+state.camera.x,y:(y-viewH/2)/scale+state.camera.y};}
 
-function issueMove(target){
+function issueMove(target,opts={}){
   if(state.phase!=='playing')return;
+  if(!opts.keepBoard)state.pendingBoard=null;
   const fly=selectedSquad().some(u=>{const v=vehicleOf(u);return v&&v.type==='heli';});
   if(!walkable(map,target.x,target.y,{fly})){toast('Teren niedostępny. Wybierz drogę lub otwarty teren.');return;}
   const units=selectedSquad();if(!units.length){regroup();return;}
@@ -396,21 +398,54 @@ function wreckVehicle(v,amount=999){
   v.path=[];for(const id of [...v.occupants]){const u=squad.find(s=>s.id===id);if(u){u.vehicleId=null;if(u.hp>0)damageSoldier(u,100);}}
   v.occupants=[];state.decals.push({x:v.x,y:v.y,type:'crater'});toast(`${({jeep:'Dżip',tank:'Czołg',heli:'Helikopter',turret:'Wieżyczka'})[v.type]||'Pojazd'} zniszczony`);
 }
+function nearestVehicle(units,target){
+  if(target&&target.hp>0)return target;
+  const pool=(map.vehicles||[]).filter(v=>v.hp>0);
+  if(!pool.length||!units.length)return null;
+  let best=null,bestD=Infinity;
+  for(const u of units)for(const v of pool){const d=distance(u,v);if(d<bestD){bestD=d;best=v;}}
+  return best;
+}
+function boardNearby(v,onFoot){
+  const cap=vehicleCapacity(v.type);let n=0;
+  const near=onFoot.filter(u=>distance(u,v)<=BOARD_RANGE).sort((a,b)=>distance(a,v)-distance(b,v));
+  for(const u of near){
+    if(v.occupants.length>=cap)break;
+    u.vehicleId=v.id;u.path=[];u.followLeaderId=null;v.occupants.push(u.id);n++;
+  }
+  return n;
+}
+function approachVehicle(v){
+  state.pendingBoard=v.id;
+  issueMove({x:v.x,y:v.y},{keepBoard:true});
+  toast('Idziecie do pojazdu.');
+}
+function resolvePendingBoard(){
+  if(state.pendingBoard==null||state.phase!=='playing')return;
+  const v=(map.vehicles||[]).find(x=>x.id===state.pendingBoard&&x.hp>0);
+  const onFoot=selectedSquad().filter(u=>!vehicleOf(u));
+  if(!v||!onFoot.length){state.pendingBoard=null;return;}
+  if(v.occupants.length>=vehicleCapacity(v.type)){state.pendingBoard=null;return;}
+  if(boardNearby(v,onFoot)){
+    toast(v.type==='turret'?'Obsada wieżyczki':`Wsiadacie do: ${v.type}`);beep('pickup');
+    if(!selectedSquad().some(u=>!vehicleOf(u))||v.occupants.length>=vehicleCapacity(v.type))state.pendingBoard=null;
+  }
+}
 function toggleVehicle(target){
   const units=selectedSquad();if(!units.length)return;
   const boarded=units.filter(u=>vehicleOf(u)),onFoot=units.filter(u=>!vehicleOf(u));
-  const focus=onFoot[0]||units[0];
-  const v=target&&target.hp>0?target:(map.vehicles||[]).filter(v=>v.hp>0).sort((a,b)=>distance(a,focus)-distance(b,focus))[0];
-  const cap=v?vehicleCapacity(v.type):0;
-  if(v&&onFoot.length&&v.occupants.length<cap&&distance(v,focus)<=36){
-    for(const u of onFoot){
-      if(v.occupants.length>=cap)break;
-      u.vehicleId=v.id;u.path=[];v.occupants.push(u.id);
+  const v=nearestVehicle(onFoot.length?onFoot:units,target);
+  if(v&&onFoot.length&&v.occupants.length<vehicleCapacity(v.type)){
+    if(boardNearby(v,onFoot)){
+      toast(v.type==='turret'?'Obsada wieżyczki':`Wsiadacie do: ${v.type}`);beep('pickup');
+      const wait=onFoot.filter(u=>!vehicleOf(u));
+      if(wait.length&&v.occupants.length<vehicleCapacity(v.type)){state.pendingBoard=v.id;issueMove({x:v.x,y:v.y},{keepBoard:true});}
+      else state.pendingBoard=null;
+      return;
     }
-    toast(v.type==='turret'?'Obsada wieżyczki':`Wsiadacie do: ${v.type}`);beep('pickup');
-    return;
+    approachVehicle(v);return;
   }
-  if(boarded.length){exitVehicle(boarded);return;}
+  if(boarded.length){state.pendingBoard=null;exitVehicle(boarded);return;}
   toast('Podejdź do dżipa, czołgu, helikoptera lub wieżyczki (E / POJAZD).');
 }
 function exitVehicle(units){
@@ -472,6 +507,7 @@ function tick(dt){
       else{let target=null,best=stats.range;for(const e of map.enemies)if(e.hp>0){const d=distance(u,e);if(d<best&&lineClear(map,u,e)){target=e;best=d;}}if(target)shoot(u,target);}
     }
   }
+  resolvePendingBoard();
   for(const e of map.enemies){
     if(e.hp<=0)continue;e.cooldown-=dt;e.flash=Math.max(0,(e.flash||0)-dt);e.repath-=dt;e.patrol-=dt;e.alert-=dt;
     if(e.role==='dummy'){e.path=[];continue;}
@@ -911,12 +947,9 @@ canvas.addEventListener('pointerdown',e=>{
     const hit=e.pointerType==='touch'?22:15;
     const clicked=liveSquad().find(u=>distance(u,p)<hit);
     if(clicked){promoteLeader(clicked.id);return;}
-    const tapV=(e.pointerType==='touch'?30:22);
+    const tapV=e.pointerType==='touch'?44:28;
     const vehicle=(map.vehicles||[]).filter(v=>v.hp>0).find(v=>distance(v,p)<tapV);
-    if(vehicle){
-      const units=selectedSquad();
-      if(units.some(u=>u.vehicleId===vehicle.id||distance(u,vehicle)<=36)){toggleVehicle(vehicle);return;}
-    }
+    if(vehicle){toggleVehicle(vehicle);return;}
     issueMove(p);
   }
 });

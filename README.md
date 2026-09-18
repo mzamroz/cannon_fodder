@@ -29,7 +29,7 @@ Otwórz http://localhost:5173. Można też użyć `npm start`. Pliki są statycz
 - **RUCH** — stuknięcie na mapie wysyła oddział w to miejsce. Stuknięcie żołnierza czyni go dowódcą grupy.
 - **OGIEŃ** — przytrzymaj palec, żeby strzelać w tym kierunku. Żołnierze też sami ostrzeliwują wrogów w zasięgu.
 - Przytrzymaj GRANAT / RAKIETA i przeciągnij, by zobaczyć łuk trajektorii; puszczenie palca oddaje strzał.
-- **POJAZD** — wsiądź albo wysiądź z dżipa, czołgu, helikoptera lub wieżyczki (albo stuknij pojazd, gdy oddział jest obok).
+- **POJAZD** — wsiądź albo wysiądź z dżipa, czołgu, helikoptera lub wieżyczki. Jeśli jesteś dalej, oddział sam podejdzie do najbliższego pojazdu. Możesz też stuknąć pojazd na mapie.
 - Minę albo pułapkę bambusową zestrzelisz z dystansu w trybie OGIEŃ — przy kontakcie nadal wybuchają.
 - PODZIEL, SCAL, LASSO: zarządzanie pododdziałami. CENTRUJ wraca kamerę na oddział. MAPA chowa lub przywraca minimapę. Kliknięcie minimapy przenosi zwiad.
 

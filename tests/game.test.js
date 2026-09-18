@@ -307,6 +307,18 @@ test('mobile vehicle button boards and then exits a nearby jeep',()=>{
   assert.ok(g.squad.every(u=>u.vehicleId==null));
 });
 
+test('vehicle button walks the squad to a distant jeep then boards',()=>{
+  const g=game();g.enterBootCamp();
+  const jeep=g.map.vehicles[0];
+  g.squad.forEach(u=>Object.assign(u,{x:jeep.x+90,y:jeep.y,path:[],followLeaderId:null,vehicleId:null}));
+  g.buttons('touch-vehicle').onclick();
+  assert.ok(g.squad.every(u=>u.vehicleId==null));
+  assert.equal(g.state.pendingBoard,jeep.id);
+  for(let i=0;i<160;i++)g.tick(.02);
+  assert.ok(g.squad.some(u=>u.vehicleId===jeep.id),'soldiers board after walking up');
+  assert.ok(g.squad[0].hp>0);
+});
+
 test('campaign ends when the recruit pool is empty',()=>{
   const g=game();g.startMission();
   g.state.campaign.roster.forEach(r=>r.dead=true);
