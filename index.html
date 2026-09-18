@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#171d18" />
   <title>War has never been so much fun</title>
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
   <header class="topbar">
@@ -47,11 +47,12 @@
             <button id="new-campaign" class="text-button new-campaign">Nowa kampania</button>
             <div id="save-status" class="save-note" role="status">Postęp zapisuje się automatycznie w tej przeglądarce.</div>
             <div class="briefing-note" id="overlay-note">Ruch: LPM · Ogień: PPM · G granat · R rakieta · X podziel · C scal<br>Tab grupa · 1–4 żołnierz · Shift lasso · WASD/strzałki zwiad · F kamera · E pojazd · Spacja/P/Esc pauza</div>
-            <div class="briefing-note touch-note">Lewa strona: ruch · Prawa: ogień<br>Przytrzymaj GRANAT lub RAKIETA, by celować · CENTER wraca kamerę</div>
+            <div class="briefing-note touch-note">TRYB RUCH: stuknij mapę, by iść · TRYB OGIEŃ: przytrzymaj, by strzelać<br>Przytrzymaj GRANAT lub RAKIETA, by celować · CENTER wraca kamerę</div>
           </div>
         </div>
       </div>
       <div class="mobile-controls" aria-label="Sterowanie dotykowe">
+        <button id="touch-mode" type="button">TRYB: RUCH</button>
         <button id="touch-split" type="button">PODZIEL</button>
         <button id="touch-merge" type="button">SCAL</button>
         <button id="touch-lasso" type="button">LASSO</button>

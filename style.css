@@ -56,8 +56,8 @@ body>.workspace{flex:1;min-height:0;height:auto}
   .mission-badge{font-size:7px;padding:6px 8px}
   .field-bottom,.field-bottom .key-hint{display:none}
   .center-cam{display:none}
-  .mobile-controls{display:flex;position:relative;left:auto;right:auto;bottom:auto;max-width:none;width:100%;flex-shrink:0;flex-wrap:nowrap;justify-content:stretch;align-items:stretch;gap:5px;z-index:2;padding:6px;background:var(--panel);border-top:1px solid var(--line)}
-  .mobile-controls button{flex:1;min-width:0;min-height:44px;padding:8px 4px;font:700 8px/1.1 'IBM Plex Mono',monospace;letter-spacing:.3px;border:1px solid #b8ca8188;background:#24301fe8;color:var(--accent)}
+  .mobile-controls{display:flex;position:relative;left:auto;right:auto;bottom:auto;max-width:none;width:100%;flex-shrink:0;flex-wrap:wrap;justify-content:stretch;align-items:stretch;gap:5px;z-index:2;padding:6px;background:var(--panel);border-top:1px solid var(--line)}
+  .mobile-controls button{flex:1 1 22%;min-width:0;min-height:44px;padding:8px 4px;font:700 8px/1.1 'IBM Plex Mono',monospace;letter-spacing:.3px;border:1px solid #b8ca8188;background:#24301fe8;color:var(--accent)}
   .overlay{position:fixed;top:calc(52px + env(safe-area-inset-top));left:env(safe-area-inset-left);right:env(safe-area-inset-right);bottom:env(safe-area-inset-bottom);z-index:5;align-items:flex-start;padding:10px;overflow-y:auto}
   .briefing{width:min(420px,100%);max-width:100%;padding:18px 16px 14px;margin:auto}
   .briefing h2{font-size:32px;margin-bottom:10px;max-width:none}
@@ -74,7 +74,6 @@ body>.workspace{flex:1;min-height:0;height:auto}
 }
 
 @media (max-width:360px){
-  .mobile-controls{flex-wrap:wrap}
   .mobile-controls button{flex:1 1 30%;min-height:42px}
   .operation{min-width:88px;width:88px;padding:8px 6px}
   .resources{padding:8px 6px;gap:8px}

@@ -26,11 +26,10 @@ Otwórz http://localhost:5173. Można też użyć `npm start`. Pliki są statycz
 
 ### Ekran dotykowy
 
-- Lewa strona: wirtualny joystick (pojawia się pod palcem) albo krótkie stuknięcie = tap-to-move.
-- Prawa strona: twin-stick ognia z aim assist w stożku widzenia.
-- Swipe w środku mapy: zwiad. CENTER wraca na oddział.
+- **TRYB: RUCH** — stuknięcie na mapie wysyła oddział w to miejsce (point-and-click).
+- **TRYB: OGIEŃ** — przytrzymaj palec, żeby strzelać w tym kierunku. Żołnierze też sami ostrzeliwują wrogów w zasięgu.
 - Przytrzymaj GRANAT / RAKIETA i przeciągnij, by zobaczyć łuk trajektorii; puszczenie palca oddaje strzał.
-- SPLIT, MERGE, LASSO: zarządzanie pododdziałami.
+- PODZIEL, SCAL, LASSO: zarządzanie pododdziałami. CENTER wraca kamerę na oddział. Kliknięcie minimapy przenosi zwiad.
 
 ## Kampania i cele
 

@@ -1,4 +1,4 @@
-import {TILE,generateMap,walkable,lineClear,findPath,moveUnit,distance,missionStatus,updateSites,spawnFromHuts,createCampaign,deploySquad,settleMission,recruitsLeft,rankStats,pointInPolygon,aimAssist,vehicleCapacity,vehicleSpeed,tileAt,soldierFromRecruit,T_ICE} from './engine.js';
+import {TILE,generateMap,walkable,lineClear,findPath,moveUnit,distance,missionStatus,updateSites,spawnFromHuts,createCampaign,deploySquad,settleMission,recruitsLeft,rankStats,pointInPolygon,vehicleCapacity,vehicleSpeed,tileAt,soldierFromRecruit,T_ICE} from './engine.js';
 import {SAVE_KEY,encodeSave,decodeSave} from './save.js';
 
 const $=id=>document.getElementById(id);
@@ -14,7 +14,7 @@ function syncTouchUI(){
 const canvas=$('game'),ctx=canvas.getContext('2d'),mini=$('minimap'),mc=mini.getContext('2d');
 const GROUP_COL=['#d5ed91','#8fd4e8','#e8c56a','#e89b7a'];
 const pointers=new Map();
-const state={phase:'briefing',mission:1,score:0,grenades:6,rockets:2,elapsed:0,kills:0,deaths:0,hutsDone:0,selected:new Set([0,1,2,3]),bullets:[],particles:[],bombs:[],decals:[],rings:[],camera:{x:0,y:0},pointer:{x:0,y:0,worldX:0,worldY:0},firing:false,keys:new Set(),follow:true,touchMode:'move',lassoMode:false,heavyAim:null,lasso:null,sticks:{move:null,fire:null},shake:0,sound:false,toastTime:0,uiTime:0,campaign:createCampaign()};
+const state={phase:'briefing',mission:1,score:0,grenades:6,rockets:2,elapsed:0,kills:0,deaths:0,hutsDone:0,selected:new Set([0,1,2,3]),bullets:[],particles:[],bombs:[],decals:[],rings:[],camera:{x:0,y:0},pointer:{x:0,y:0,worldX:0,worldY:0},firing:false,keys:new Set(),follow:true,touchMode:'move',lassoMode:false,heavyAim:null,lasso:null,shake:0,sound:false,toastTime:0,uiTime:0,campaign:createCampaign()};
 let saveActive=false,saveTimer=0,saveFailed=false,missionLinkCleared=false,spawnHint=false;
 let map,squad,terrain,miniTerrain,viewW=1000,viewH=700,scale=1,audioCtx,lastTime=0,visualTime=0;
 const urlParams=new URLSearchParams(location.search),initialSeed=Number(urlParams.get('seed'));
@@ -29,7 +29,7 @@ function selectedSquad(){return squad.filter(u=>u.hp>0&&state.selected.has(u.id)
 function initMission(seed=freshSeed(),retry=false,saved=null){
   const prevPhase=state.phase,prevSquad=squad;
   map=saved?.map??generateMap(seed,state.mission);
-  Object.assign(state,{elapsed:0,kills:0,deaths:0,hutsDone:0,bullets:[],particles:[],bombs:[],decals:[],rings:[],firing:false,grenades:map.difficulty.grenades,rockets:map.difficulty.rockets,selected:new Set([0,1,2,3]),follow:true,shake:0,hutHint:false,evacReady:false,stars:0,bonus:0,heavyAim:null,lasso:null,sticks:{move:null,fire:null},lassoMode:false});
+  Object.assign(state,{elapsed:0,kills:0,deaths:0,hutsDone:0,bullets:[],particles:[],bombs:[],decals:[],rings:[],firing:false,grenades:map.difficulty.grenades,rockets:map.difficulty.rockets,selected:new Set([0,1,2,3]),follow:true,shake:0,hutHint:false,evacReady:false,stars:0,bonus:0,heavyAim:null,lasso:null,lassoMode:false,touchMode:'move'});
   if(!retry)state.missionStartScore=state.score;
   spawnHint=false;pointers.clear();
   state.camera.x=map.spawn.x;state.camera.y=map.spawn.y;
@@ -51,6 +51,7 @@ function initMission(seed=freshSeed(),retry=false,saved=null){
   if(!squad.length){state.phase='over';showOverlay('over');return;}
   if(!saved)state.selected=new Set(squad.map(u=>u.id));
   buildTerrain();buildSquadUI();updateUI();resize();drawHill();
+  if($('touch-mode')){$('touch-mode').textContent='TRYB: RUCH';$('touch-mode').classList.remove('active');}
   $('operation-title').textContent=map.operation.name;$('mission-terrain').textContent=`${map.layout.name} · ${map.cols} × ${map.rows}`;$('mission-difficulty').textContent=`ZAGROŻENIE ${map.difficulty.level}/13`; $('biome-label').textContent=map.biome.label;
   document.querySelector('.operation-number').innerHTML=`${format(state.mission)} <span>/ ∞</span>`;
   $('header-mission').textContent=`MISJA ${format(state.mission)}`;$('seed-label').textContent=format(seed,8);$('weather').textContent=map.biome.sky;
@@ -337,36 +338,12 @@ function tick(dt){
   if(state.phase!=='playing')return;
   state.elapsed+=dt;state.shake=Math.max(0,state.shake-dt*22);
   const alive=liveSquad(),aim=screenToWorld(state.pointer.x,state.pointer.y);
-  if(!state.sticks.fire){state.pointer.worldX=aim.x;state.pointer.worldY=aim.y;}
+  state.pointer.worldX=aim.x;state.pointer.worldY=aim.y;
   const dx=Number(state.keys.has('d')||state.keys.has('arrowright'))-Number(state.keys.has('a')||state.keys.has('arrowleft'));
   const dy=Number(state.keys.has('s')||state.keys.has('arrowdown'))-Number(state.keys.has('w')||state.keys.has('arrowup'));
   if(dx||dy){state.follow=false;state.camera.x+=dx*560*dt;state.camera.y+=dy*560*dt;}
   if(state.follow&&alive.length){const focus=selectedSquad().length?selectedSquad():alive;const x=focus.reduce((n,u)=>n+u.x,0)/focus.length,y=focus.reduce((n,u)=>n+u.y,0)/focus.length;state.camera.x+=(x-state.camera.x)*Math.min(1,dt*3);state.camera.y+=(y-state.camera.y)*Math.min(1,dt*3);}
   clampCamera();
-  if(state.sticks.move){
-    const st=state.sticks.move;
-    if(Math.hypot(st.dx,st.dy)>0.22){
-      for(const u of selectedSquad()){
-        if(u.vehicleId!=null)continue;
-        const dest={x:u.x+st.dx*160,y:u.y+st.dy*160};
-        u.path=findPath(map,u,walkable(map,dest.x,dest.y)?dest:u);
-      }
-      for(const v of new Set(selectedSquad().map(vehicleOf).filter(Boolean))){
-        if(v.type==='turret')continue;
-        const dest={x:v.x+st.dx*180,y:v.y+st.dy*180};
-        v.path=findPath(map,v,dest,{fly:v.type==='heli'});
-      }
-    }
-  }
-  if(state.sticks.fire){
-    const focus=selectedSquad()[0]||alive[0];
-    if(focus){
-      const raw={x:focus.x+state.sticks.fire.dx*260,y:focus.y+state.sticks.fire.dy*260};
-      const locked=aimAssist(focus,raw,map.enemies,0.7,rankStats(focus.rank).range);
-      state.pointer.worldX=locked.x;state.pointer.worldY=locked.y;
-      state.firing=Math.hypot(state.sticks.fire.dx,state.sticks.fire.dy)>0.18;
-    }
-  }
   if(state.heavyAim){const u=selectedSquad()[0];if(u)state.heavyAim.from={x:u.x,y:u.y};state.heavyAim.to={x:state.pointer.worldX,y:state.pointer.worldY};}
   for(const v of map.vehicles||[]){
     if(v.hp<=0)continue;v.cooldown-=dt;v.flash=Math.max(0,(v.flash||0)-dt);
@@ -634,15 +611,8 @@ function render(){
   }
   ctx.restore();
   const vignette=ctx.createRadialGradient(viewW/2,viewH/2,viewW*.16,viewW/2,viewH/2,Math.max(viewW,viewH)*.7);vignette.addColorStop(0,'#17241600');vignette.addColorStop(1,'#15201644');ctx.fillStyle=vignette;ctx.fillRect(0,0,viewW,viewH);
-  drawStick(state.sticks.move,'#d6ed92');drawStick(state.sticks.fire,'#e8a36d');
   renderMini();
 }
-function drawStick(stick,color){
-  if(!stick)return;
-  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(stick.x,stick.y,56,0,Math.PI*2);ctx.stroke();
-  ctx.beginPath();ctx.arc(stick.x+stick.dx*40,stick.y+stick.dy*40,22,0,Math.PI*2);ctx.fillStyle=color+'55';ctx.fill();ctx.stroke();
-}
-
 function miniProjection(){const scale=Math.min(mini.width/map.width,mini.height/map.height);return {scale,x:(mini.width-map.width*scale)/2,y:(mini.height-map.height*scale)/2};}
 function renderMini(){
   const p=miniProjection(),sx=p.scale,sy=p.scale;
@@ -664,7 +634,7 @@ function showOverlay(kind){
   const left=recruitsLeft(state.campaign);
   const data={
     briefing:{eyebrow:`DEPESZA Z DOWÓDZTWA / ${format(state.mission,3)}`,title:map.operation.name,description:`${map.operation.brief} ${map.layout.hint}`,button:'ROZPOCZNIJ OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
-    paused:{eyebrow:'ŁĄCZNOŚĆ WSTRZYMANA',title:'Chwila<br>na oddech.',description:isTouchUI()?'Oddział czeka. Lewa strona mapy to ruch, prawa to ogień. PODZIEL rozdziela grupę, SCAL łączy, LASSO zaznacza, CENTER wraca kamerę. Żołnierze sami strzelają do wrogów w zasięgu.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:'↻  Rozpocznij misję od nowa'},
+    paused:{eyebrow:'ŁĄCZNOŚĆ WSTRZYMANA',title:'Chwila<br>na oddech.',description:isTouchUI()?'Oddział czeka. TRYB RUCH: stuknij mapę, żeby wysłać oddział. TRYB OGIEŃ: przytrzymaj palec, żeby strzelać. PODZIEL, SCAL i LASSO zarządzają grupami, CENTER wraca kamerę. Żołnierze sami strzelają do wrogów w zasięgu.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:'↻  Rozpocznij misję od nowa'},
     won:{eyebrow:`RAPORT Z MISJI / ${format(state.mission,3)}`,title:'Sektor<br>zabezpieczony.',description:`${'★'.repeat(state.stars)}${'☆'.repeat(3-state.stars)} · ${liveSquad().length} z 4 żołnierzy wraca do bazy. Premia: +${state.bonus}. Ocalali awansują. Gwiazdki: wykonanie misji, pełny oddział, czas poniżej ${Math.floor(map.parTime/60)}:${format(map.parTime%60)}.`,button:'NASTĘPNA MISJA',secondary:'⟳  Rozegraj ten teren ponownie'},
     lost:{eyebrow:'RAPORT Z MISJI / UTRACONO KONTAKT',title:'To jeszcze<br>nie koniec.',description:`Polegli znikają na zawsze. Na wzgórzu zostało ${left} ochotników. Wykorzystuj osłony, dziel oddział i niszcz spawnerzy, zanim fala cię zaleje.`,button:'PONÓW OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
     over:{eyebrow:'KAMPANIA ZAKOŃCZONA',title:'Wzgórze<br>bohaterów.',description:'360 ochotników zeszło z zielonego wzgórza. Wojna pożarła ich wszystkich. War has never been so much fun.',button:'NOWA KAMPANIA',secondary:'—'}
@@ -700,12 +670,9 @@ function beep(type){
 function beginHeavy(type){if(state.phase!=='playing')return;const u=selectedSquad()[0];state.heavyAim={type,from:u?{x:u.x,y:u.y}:{x:state.pointer.worldX,y:state.pointer.worldY},to:{x:state.pointer.worldX,y:state.pointer.worldY}};}
 function endPointer(e){
   const rec=pointers.get(e.pointerId);pointers.delete(e.pointerId);
-  if(!rec){if(![...pointers.values()].some(p=>p.role==='fire'))state.firing=false;return;}
-  if(rec.role==='move')state.sticks.move=null;
-  if(rec.role==='fire'){state.sticks.fire=null;state.firing=false;}
+  if(!rec){if(!pointers.size)state.firing=false;return;}
   if(rec.role==='lasso')finishLasso();
   if(rec.role==='heavy'){const aim=state.heavyAim;state.heavyAim=null;if(aim)throwHeavy(aim.type,aim.to);}
-  if(rec.role==='tap')issueMove(rec.world);
 }
 
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -714,12 +681,8 @@ canvas.addEventListener('pointermove',e=>{
   const p=screenToWorld(state.pointer.x,state.pointer.y);state.pointer.worldX=p.x;state.pointer.worldY=p.y;
   $('coordinates').textContent=`SEKTOR ${format(Math.floor(p.x/TILE))} / ${format(Math.floor(p.y/TILE))}`;
   const rec=pointers.get(e.pointerId);if(!rec)return;
-  if(rec.role==='move'){const dx=state.pointer.x-rec.x,dy=state.pointer.y-rec.y,m=Math.hypot(dx,dy)||1,mag=Math.min(1,m/55);state.sticks.move={x:rec.x,y:rec.y,dx:dx/m*mag,dy:dy/m*mag};}
-  else if(rec.role==='fire'){const dx=state.pointer.x-rec.x,dy=state.pointer.y-rec.y,m=Math.hypot(dx,dy)||1,mag=Math.min(1,m/55);state.sticks.fire={x:rec.x,y:rec.y,dx:dx/m*mag,dy:dy/m*mag};state.firing=mag>0.18;}
-  else if(rec.role==='lasso')state.lasso.push(p);
+  if(rec.role==='lasso')state.lasso.push(p);
   else if(rec.role==='heavy'&&state.heavyAim)state.heavyAim.to=p;
-  else if(rec.role==='tap'&&Math.hypot(state.pointer.x-rec.x,state.pointer.y-rec.y)>14){rec.role='pan';state.follow=false;}
-  else if(rec.role==='pan'){state.follow=false;state.camera.x-=(e.movementX||0)/scale;state.camera.y-=(e.movementY||0)/scale;clampCamera();}
 });
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();if(state.phase!=='playing')return;canvas.focus();
@@ -727,16 +690,12 @@ canvas.addEventListener('pointerdown',e=>{
   Object.assign(state.pointer,{x:sx,y:sy,worldX:p.x,worldY:p.y});
   if(state.heavyAim){pointers.set(e.pointerId,{role:'heavy'});canvas.setPointerCapture(e.pointerId);return;}
   if(state.lassoMode||e.shiftKey){state.lasso=[p];pointers.set(e.pointerId,{role:'lasso'});canvas.setPointerCapture(e.pointerId);return;}
-  if(e.button===2||(e.pointerType==='touch'&&sx>r.width*.58)){
-    state.firing=true;
-    if(e.pointerType==='touch'){state.sticks.fire={x:sx,y:sy,dx:0,dy:0};pointers.set(e.pointerId,{role:'fire',x:sx,y:sy});}
-    canvas.setPointerCapture(e.pointerId);return;
+  if(e.button===2||(e.pointerType==='touch'&&state.touchMode==='fire')){
+    state.firing=true;canvas.setPointerCapture(e.pointerId);return;
   }
   if(e.button===0){
-    if(e.pointerType==='touch'&&sx<r.width*.42){state.sticks.move={x:sx,y:sy,dx:0,dy:0};pointers.set(e.pointerId,{role:'move',x:sx,y:sy});canvas.setPointerCapture(e.pointerId);return;}
     const clicked=liveSquad().find(u=>distance(u,p)<15);
     if(clicked&&e.pointerType!=='touch'){select(clicked.id);return;}
-    if(e.pointerType==='touch'){pointers.set(e.pointerId,{role:'tap',x:sx,y:sy,world:p});canvas.setPointerCapture(e.pointerId);return;}
     issueMove(p);
   }
 });
@@ -779,6 +738,12 @@ $('reroll').onclick=()=>{
   else{if(state.phase==='lost')state.score=state.missionStartScore;initMission();state.phase='briefing';showOverlay('briefing');saveProgress();}
 };
 $('copy-seed').onclick=async()=>{const url=new URL(location.href);url.searchParams.set('seed',map.seed);url.searchParams.set('mission',state.mission);try{await navigator.clipboard.writeText(url.href);toast('Skopiowano link z ziarnem mapy');}catch{toast(`Ziarno mapy: ${map.seed}, misja: ${state.mission}`);}};
+$('touch-mode').onclick=()=>{
+  state.touchMode=state.touchMode==='move'?'fire':'move';
+  $('touch-mode').textContent=`TRYB: ${state.touchMode==='move'?'RUCH':'OGIEŃ'}`;
+  $('touch-mode').classList.toggle('active',state.touchMode==='fire');
+  toast(state.touchMode==='move'?'Stuknij mapę, żeby wysłać oddział':'Przytrzymaj palec, żeby strzelać');
+};
 $('touch-grenade').onpointerdown=e=>{e.preventDefault();beginHeavy('grenade');pointers.set(e.pointerId,{role:'heavy'});};
 $('touch-rocket').onpointerdown=e=>{e.preventDefault();beginHeavy('rocket');pointers.set(e.pointerId,{role:'heavy'});};
 $('touch-grenade').onclick=()=>{if(!state.heavyAim)throwGrenade();};
