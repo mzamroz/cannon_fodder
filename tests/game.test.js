@@ -11,10 +11,11 @@ function game(mission=1,options={}){
   const localStorage=options.localStorage??{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)};
   const noop=()=>{},drawing=new Proxy({createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>o[k]??noop,set:(o,k,v)=>(o[k]=v,true)});
   const nodes=new Map();
-  function node(id){if(!nodes.has(id))nodes.set(id,{id,width:192,height:144,style:{},classList:{add:noop,remove:noop,toggle:noop},getContext:()=>drawing,getBoundingClientRect:()=>({width:1100,height:700,left:0,top:0}),querySelector:()=>node(`${id}-child`),setAttribute:noop,addEventListener:noop,focus:noop});return nodes.get(id);}
+  function classList(){const set=new Set();return {add:(...n)=>n.forEach(c=>set.add(c)),remove:(...n)=>n.forEach(c=>set.delete(c)),toggle:(c,force)=>{const on=force===undefined?!set.has(c):!!force;if(on)set.add(c);else set.delete(c);return on;},contains:c=>set.has(c)};}
+  function node(id){if(!nodes.has(id))nodes.set(id,{id,width:192,height:144,style:{},classList:classList(),getContext:()=>drawing,getBoundingClientRect:()=>({width:1100,height:700,left:0,top:0}),querySelector:()=>node(`${id}-child`),setAttribute:noop,addEventListener:noop,focus:noop});return nodes.get(id);}
   const context=vm.createContext({...engine,...saves,localStorage,testEvents:events,console,Math,Number,String,Set,URL,URLSearchParams,Uint32Array,devicePixelRatio:1,crypto:{getRandomValues:a=>(a[0]=12345,a)},location:{search:options.search??(mission===1?'':`?mission=${mission}`),href:'http://localhost:5173/'},navigator:{},document:{getElementById:node,querySelector:node,createElement:()=>node(Math.random()),addEventListener:(name,fn)=>events[name]=fn},window:{history:{replaceState:(state,title,url)=>events.savedURL=url},addEventListener:(name,fn)=>events[name]=fn,confirm:options.confirm??(()=>true)},ResizeObserver:class{observe(){}},requestAnimationFrame:noop});
   const source=readFileSync(new URL('../game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');
-  vm.runInContext(source+'\nthis.testGame={state,events:testEvents,document,saveProgress,endMission,get map(){return map},get squad(){return squad},tick,initMission,startMission,pause,issueMove,throwGrenade,throwRocket,throwHeavy,splitSquad,mergeSquad,cycleGroup,toggleVehicle,damageEnemy,damageSoldier,damageCivilian,explode,select,promoteLeader,regroup,enterBootCamp,leaveBootCamp,render,renderMini,miniProjection,clampCamera,shoot,buttons: $};',context);
+  vm.runInContext(source+'\nthis.testGame={state,events:testEvents,document,saveProgress,endMission,get map(){return map},get squad(){return squad},tick,initMission,startMission,pause,issueMove,throwGrenade,throwRocket,throwHeavy,splitSquad,mergeSquad,cycleGroup,toggleVehicle,toggleMini,damageEnemy,damageSoldier,damageCivilian,explode,select,promoteLeader,regroup,enterBootCamp,leaveBootCamp,render,renderMini,miniProjection,clampCamera,shoot,buttons: $};',context);
   return context.testGame;
 }
 
@@ -327,6 +328,28 @@ test('hub cemetery toggle replaces the world map with named graves',()=>{
   g.buttons('toggle-graves').onclick();
   assert.equal(g.state.graveOpen,false);
   assert.equal(g.buttons('toggle-graves').textContent,'CMENTARZ');
+});
+
+test('tactical map can be hidden and later restored',()=>{
+  const storage=new Map(),g=game(1,{storage});
+  assert.equal(g.state.miniHidden,false);
+  g.buttons('hide-mini').onclick();
+  assert.equal(g.state.miniHidden,true);
+  assert.equal(g.buttons('minimap-wrap').classList.contains('collapsed'),true);
+  assert.equal(storage.get('tiny-front-minimap'),'hidden');
+  g.startMission();
+  assert.equal(g.state.miniHidden,true,'hiding survives mission start');
+  g.renderMini();
+  g.buttons('show-mini').onclick();
+  assert.equal(g.state.miniHidden,false);
+  assert.equal(g.buttons('minimap-wrap').classList.contains('collapsed'),false);
+  g.toggleMini();
+  assert.equal(g.state.miniHidden,true);
+  const kept=game(1,{storage});
+  assert.equal(kept.state.miniHidden,true);
+  assert.equal(kept.buttons('touch-mini').textContent,'POKAŻ MAPĘ');
+  kept.buttons('touch-mini').onclick();
+  assert.equal(kept.state.miniHidden,false);
 });
 
 test('autosave after bunker waves reloads the paused battle',()=>{

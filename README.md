@@ -21,7 +21,7 @@ Otwórz http://localhost:5173. Można też użyć `npm start`. Pliki są statycz
 - 1–4: wybór pojedynczego żołnierza. Q: wybór wszystkich.
 - E: wsiądź / wysiądź z dżipa, czołgu, helikoptera lub wieżyczki.
 - WASD / strzałki: zwiad — kamera odłącza się od oddziału. F albo przycisk **CENTER**: powrót na dowódcę.
-- Kliknięcie minimapy: przeniesienie kamery.
+- Kliknięcie minimapy: przeniesienie kamery. **M** albo **UKRYJ** chowa mapę taktyczną; **MAPA TAKTYCZNA** w rogu albo ponowne **M** ją przywraca. Preferencja zostaje w przeglądarce.
 - Spacja / P / Escape: pauza. Utrata fokusu automatycznie pauzuje grę.
 
 ### Ekran dotykowy
@@ -29,7 +29,7 @@ Otwórz http://localhost:5173. Można też użyć `npm start`. Pliki są statycz
 - **TRYB: RUCH** — stuknięcie na mapie wysyła oddział w to miejsce (point-and-click).
 - **TRYB: OGIEŃ** — przytrzymaj palec, żeby strzelać w tym kierunku. Żołnierze też sami ostrzeliwują wrogów w zasięgu.
 - Przytrzymaj GRANAT / RAKIETA i przeciągnij, by zobaczyć łuk trajektorii; puszczenie palca oddaje strzał.
-- PODZIEL, SCAL, LASSO: zarządzanie pododdziałami. CENTER wraca kamerę na oddział. Kliknięcie minimapy przenosi zwiad.
+- PODZIEL, SCAL, LASSO: zarządzanie pododdziałami. CENTER wraca kamerę na oddział. MAPA chowa lub przywraca minimapę. Kliknięcie minimapy przenosi zwiad.
 
 ## Kampania i cele
 

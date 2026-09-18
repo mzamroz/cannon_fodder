@@ -27,12 +27,12 @@
     <main class="main">
       <div class="map-toolbar"><div><span class="crosshair-icon">⌖</span> OBSZAR OPERACJI <span class="map-coords" id="coordinates">SEKTOR 04 / 04</span></div><div class="terrain-key"><i></i> SWOI <i></i> WRÓG <i></i> CEL</div></div>
       <div class="battlefield" id="battlefield">
-        <canvas id="game" aria-label="Pole bitwy. Lewy przycisk: ruch. Prawy: strzelanie. G: granat. R: rakieta. X: podziel. C: scal. Tab: grupa. 1–4: żołnierz. Shift: lasso. WASD lub strzałki: zwiad. F: kamera. E: pojazd. Spacja, P lub Escape: pauza." tabindex="0"></canvas>
+        <canvas id="game" aria-label="Pole bitwy. Lewy przycisk: ruch. Prawy: strzelanie. G: granat. R: rakieta. X: podziel. C: scal. Tab: grupa. 1–4: żołnierz. Shift: lasso. WASD lub strzałki: zwiad. F: kamera. E: pojazd. M: mapa taktyczna. Spacja, P lub Escape: pauza." tabindex="0"></canvas>
         <div class="field-top"><div class="mission-badge"><span class="live-dot"></span><span id="field-status">OCZEKIWANIE NA ROZKAZ</span></div><div class="timer" id="timer">00:00</div></div>
         <div id="toast" class="toast" role="status"></div>
         <button id="center-cam" class="center-cam hidden" type="button">CENTER</button>
-        <div class="minimap-wrap"><div class="minimap-heading">MAPA TAKTYCZNA <span>⌖</span></div><canvas id="minimap" width="192" height="144" aria-label="Minimapa terenu"></canvas></div>
-        <div class="field-bottom"><span class="key-hint"><kbd>F</kbd> CENTRUJ · <kbd>TAB</kbd> GRUPA · <kbd>SHIFT</kbd> LASSO · <kbd>E</kbd> POJAZD</span><span id="weather">19°C <span>↗</span> WIATR 4 KM/H</span></div>
+        <div class="minimap-wrap" id="minimap-wrap"><div class="minimap-heading">MAPA TAKTYCZNA <button id="hide-mini" type="button" title="Ukryj mapę taktyczną (M)" aria-label="Ukryj mapę taktyczną">UKRYJ</button></div><canvas id="minimap" width="192" height="144" aria-label="Minimapa terenu. Kliknięcie przenosi kamerę. M ukrywa lub przywraca mapę."></canvas><button id="show-mini" class="mini-restore" type="button" title="Pokaż mapę taktyczną (M)" aria-label="Pokaż mapę taktyczną">MAPA <span>⌖</span></button></div>
+        <div class="field-bottom"><span class="key-hint"><kbd>F</kbd> CENTRUJ · <kbd>TAB</kbd> GRUPA · <kbd>SHIFT</kbd> LASSO · <kbd>E</kbd> POJAZD · <kbd>M</kbd> MAPA</span><span id="weather">19°C <span>↗</span> WIATR 4 KM/H</span></div>
         <div id="overlay" class="overlay">
           <div class="briefing">
             <div class="eyebrow" id="overlay-eyebrow">DEPESZA Z DOWÓDZTWA / 001</div>
@@ -53,8 +53,8 @@
             <button id="reroll" class="text-button">⟳ &nbsp; Wylosuj inny teren</button>
             <button id="new-campaign" class="text-button new-campaign">Nowa kampania</button>
             <div id="save-status" class="save-note" role="status">Postęp zapisuje się automatycznie w tej przeglądarce.</div>
-            <div class="briefing-note" id="overlay-note">Ruch: LPM · Ogień: PPM · G granat · R rakieta · X podziel · C scal<br>Tab grupa · 1–4 żołnierz · Shift lasso · WASD/strzałki zwiad · F kamera · E pojazd · Spacja/P/Esc pauza</div>
-            <div class="briefing-note touch-note">TRYB RUCH: stuknij mapę, by iść · TRYB OGIEŃ: przytrzymaj, by strzelać<br>Przytrzymaj GRANAT lub RAKIETA, by celować · CENTER wraca kamerę</div>
+            <div class="briefing-note" id="overlay-note">Ruch: LPM · Ogień: PPM · G granat · R rakieta · X podziel · C scal<br>Tab grupa · 1–4 żołnierz · Shift lasso · WASD/strzałki zwiad · F kamera · E pojazd · M mapa · Spacja/P/Esc pauza</div>
+            <div class="briefing-note touch-note">TRYB RUCH: stuknij mapę, by iść · TRYB OGIEŃ: przytrzymaj, by strzelać<br>Przytrzymaj GRANAT lub RAKIETA, by celować · CENTER wraca kamerę · MAPA chowa minimapę</div>
           </div>
         </div>
       </div>
@@ -66,6 +66,7 @@
         <button id="touch-grenade" type="button">GRANAT</button>
         <button id="touch-rocket" type="button">RAKIETA</button>
         <button id="touch-center" type="button" aria-label="Wycentruj kamerę na oddziale">CENTER</button>
+        <button id="touch-mini" type="button" aria-label="Ukryj lub pokaż mapę taktyczną">MAPA</button>
       </div>
       <footer class="controls"><div><span class="mouse-icon">↖</span><strong>LPM</strong> Ruch</div><div><span class="mouse-icon">⌖</span><strong>PPM</strong> Ogień</div><div><kbd>G</kbd> Granat</div><div class="ctrl-rocket"><kbd>R</kbd> Rakieta</div><div class="ctrl-split"><kbd>X</kbd> Podziel</div><div class="ctrl-tab"><kbd>TAB</kbd> Grupa</div><div class="ctrl-lasso"><kbd>SHIFT</kbd> Lasso</div><div class="ctrl-scout"><kbd>WASD</kbd> / <kbd>↑</kbd> Zwiad</div><div><kbd>SPACJA</kbd> / <kbd>P</kbd> / <kbd>ESC</kbd> Pauza</div><span class="controls-end">WAR HAS NEVER BEEN SO MUCH FUN.</span></footer>
     </main>
@@ -73,7 +74,7 @@
   <script>
   (()=>{
     const tag=document.currentScript;
-    const fallback='2.1.2';
+    const fallback='2.1.3';
     const load=v=>{
       window.TF_BUILD=v;
       const css=document.getElementById('app-css');

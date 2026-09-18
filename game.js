@@ -35,7 +35,9 @@ function syncTouchUI(){
 const canvas=$('game'),ctx=canvas.getContext('2d'),mini=$('minimap'),mc=mini.getContext('2d');
 const GROUP_COL=['#d5ed91','#8fd4e8','#e8c56a','#e89b7a'];
 const pointers=new Map();
-const state={phase:'map',mission:1,score:0,grenades:6,rockets:2,elapsed:0,kills:0,deaths:0,hutsDone:0,selected:new Set([0,1,2,3]),bullets:[],particles:[],bombs:[],decals:[],rings:[],camera:{x:0,y:0},pointer:{x:0,y:0,worldX:0,worldY:0},firing:false,keys:new Set(),follow:true,touchMode:'move',lassoMode:false,heavyAim:null,lasso:null,shake:0,sound:false,toastTime:0,uiTime:0,campaign:createCampaign(),bootcamp:false,groupLeader:{0:0},promotions:[],graveOpen:false};
+const MINI_PREF_KEY='tiny-front-minimap';
+function readMiniPref(){try{return localStorage.getItem(MINI_PREF_KEY)==='hidden';}catch{return false;}}
+const state={phase:'map',mission:1,score:0,grenades:6,rockets:2,elapsed:0,kills:0,deaths:0,hutsDone:0,selected:new Set([0,1,2,3]),bullets:[],particles:[],bombs:[],decals:[],rings:[],camera:{x:0,y:0},pointer:{x:0,y:0,worldX:0,worldY:0},firing:false,keys:new Set(),follow:true,touchMode:'move',lassoMode:false,heavyAim:null,lasso:null,shake:0,sound:false,toastTime:0,uiTime:0,campaign:createCampaign(),bootcamp:false,groupLeader:{0:0},promotions:[],graveOpen:false,miniHidden:readMiniPref()};
 let saveActive=false,saveTimer=0,saveFailed=false,missionLinkCleared=false,spawnHint=false;
 let map,squad,terrain,miniTerrain,viewW=1000,viewH=700,scale=1,audioCtx,lastTime=0,visualTime=0;
 const urlParams=new URLSearchParams(location.search),initialSeed=Number(urlParams.get('seed'));
@@ -268,6 +270,22 @@ function updateUI(){
   $('pause').innerHTML=state.phase==='paused'?'▶ <span class="btn-label">WZNÓW</span>':'Ⅱ <span class="btn-label">PAUZA</span>';
   $('center-cam')?.classList.toggle('hidden',state.follow||state.phase!=='playing');
   $('home-score').textContent=String(state.kills);$('away-score').textContent=String(state.deaths);
+  syncMini();
+}
+function syncMini(){
+  $('minimap-wrap')?.classList.toggle('collapsed',!!state.miniHidden);
+  $('battlefield')?.classList.toggle('mini-hidden',!!state.miniHidden);
+  if($('touch-mini')){
+    $('touch-mini').textContent=state.miniHidden?'POKAŻ MAPĘ':'UKRYJ MAPĘ';
+    $('touch-mini').classList.toggle('active',!state.miniHidden);
+    $('touch-mini').setAttribute('aria-label',state.miniHidden?'Pokaż mapę taktyczną':'Ukryj mapę taktyczną');
+  }
+}
+function toggleMini(){
+  state.miniHidden=!state.miniHidden;
+  try{localStorage.setItem(MINI_PREF_KEY,state.miniHidden?'hidden':'shown');}catch{}
+  syncMini();
+  toast(state.miniHidden?'Ukryto mapę taktyczną':'Przywrócono mapę taktyczną');
 }
 
 function resize(){
@@ -726,6 +744,7 @@ function render(){
 }
 function miniProjection(){const scale=Math.min(mini.width/map.width,mini.height/map.height);return {scale,x:(mini.width-map.width*scale)/2,y:(mini.height-map.height*scale)/2};}
 function renderMini(){
+  if(state.miniHidden)return;
   const p=miniProjection(),sx=p.scale,sy=p.scale;
   mc.fillStyle='#1c241d';mc.fillRect(0,0,mini.width,mini.height);mc.save();mc.translate(p.x,p.y);
   mc.drawImage(miniTerrain,0,0,map.width*sx,map.height*sy);
@@ -876,11 +895,12 @@ canvas.addEventListener('pointerdown',e=>{
 });
 window.addEventListener('pointerup',e=>{endPointer(e);if(!pointers.size)state.firing=false;});
 canvas.addEventListener('pointercancel',endPointer);
-mini.addEventListener('pointerdown',e=>{if(state.phase!=='playing')return;const r=mini.getBoundingClientRect(),p=miniProjection(),x=((e.clientX-r.left)/r.width*mini.width-p.x)/p.scale,y=((e.clientY-r.top)/r.height*mini.height-p.y)/p.scale;if(x<0||y<0||x>map.width||y>map.height)return;state.camera.x=x;state.camera.y=y;state.follow=false;clampCamera();});
+mini.addEventListener('pointerdown',e=>{if(state.miniHidden||state.phase!=='playing')return;const r=mini.getBoundingClientRect(),p=miniProjection(),x=((e.clientX-r.left)/r.width*mini.width-p.x)/p.scale,y=((e.clientY-r.top)/r.height*mini.height-p.y)/p.scale;if(x<0||y<0||x>map.width||y>map.height)return;state.camera.x=x;state.camera.y=y;state.follow=false;clampCamera();});
 window.addEventListener('keydown',e=>{
   if(e.target instanceof HTMLInputElement)return;
   const key=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright','tab'].includes(key))e.preventDefault();
   if(e.repeat)return;
+  if(key==='m'){toggleMini();return;}
   if(key===' '||key==='escape'||key==='p'){pause();return;}
   if(state.phase!=='playing')return;state.keys.add(key);
   if(key==='g')throwGrenade();if(key==='r')throwRocket();if(key==='q')regroup();if(key==='x')splitSquad();if(key==='c')mergeSquad();if(key==='tab')cycleGroup();
@@ -927,6 +947,9 @@ $('touch-rocket').onclick=()=>{if(!state.heavyAim)throwRocket();};
 $('touch-split').onclick=splitSquad;$('touch-merge').onclick=mergeSquad;
 $('touch-lasso').onclick=()=>{state.lassoMode=!state.lassoMode;$('touch-lasso').classList.toggle('active',state.lassoMode);toast(state.lassoMode?'Zakreśl pętlę wokół żołnierzy':'Lasso wyłączone');};
 $('touch-center').onclick=()=>{state.follow=true;regroup();};
+$('touch-mini')&&($('touch-mini').onclick=toggleMini);
+$('hide-mini')&&($('hide-mini').onclick=toggleMini);
+$('show-mini')&&($('show-mini').onclick=toggleMini);
 $('bootcamp')&&($('bootcamp').onclick=enterBootCamp);
 $('toggle-graves')&&($('toggle-graves').onclick=()=>{state.graveOpen=!state.graveOpen;showOverlay(state.phase==='map'?'map':state.phase);});
 new ResizeObserver(resize).observe($('battlefield'));
