@@ -29,6 +29,8 @@ Otwórz http://localhost:5173. Można też użyć `npm start`. Pliki są statycz
 - **RUCH** — stuknięcie na mapie wysyła oddział w to miejsce. Stuknięcie żołnierza czyni go dowódcą grupy.
 - **OGIEŃ** — przytrzymaj palec, żeby strzelać w tym kierunku. Żołnierze też sami ostrzeliwują wrogów w zasięgu.
 - Przytrzymaj GRANAT / RAKIETA i przeciągnij, by zobaczyć łuk trajektorii; puszczenie palca oddaje strzał.
+- **POJAZD** — wsiądź albo wysiądź z dżipa, czołgu, helikoptera lub wieżyczki. Jeśli jesteś dalej, oddział sam podejdzie do najbliższego pojazdu. Możesz też stuknąć pojazd na mapie.
+- Minę albo pułapkę bambusową zestrzelisz z dystansu w trybie OGIEŃ — przy kontakcie nadal wybuchają.
 - PODZIEL, SCAL, LASSO: zarządzanie pododdziałami. CENTRUJ wraca kamerę na oddział. MAPA chowa lub przywraca minimapę. Kliknięcie minimapy przenosi zwiad.
 
 ## Kampania i cele
@@ -50,7 +52,7 @@ Mapy mają różne wymiary i proporcje: od polan około 30×24 pól po wąwozy o
 
 Cztery biomy kręcą się w kampanii:
 
-- **Dżungla:** gęste drzewa, pływanie (wolno i bez broni), pułapki bambusowe.
+- **Dżungla:** gęste drzewa, pływanie (wolno i bez broni), pułapki bambusowe. Miny i bambus detonują przy kontakcie; można je zestrzelić z dystansu.
 - **Pustynia:** mało osłon, ruchome piaski wciągają stojących, dżipy.
 - **Śnieg:** zaspy spowalniają, lód wydłuża hamowanie; ciężki czołg może się zapaść.
 - **Baza:** ciasne korytarze, drzwi-spawnerzy, wieżyczki na podczerwień. Rakieta w pomieszczeniu to samobójstwo.

@@ -281,6 +281,44 @@ test('mines are visible immediately and still detonate on contact',()=>{
   assert.equal(mine.exploded,true);assert.equal(mine.armed,false);
 });
 
+test('rifle fire destroys a mine from a safe distance',()=>{
+  const g=game();g.enterBootCamp();
+  g.map.enemies.forEach(e=>e.hp=0);
+  const u=g.squad[0];
+  const mine={x:u.x+220,y:u.y,kind:'mine',armed:true,exploded:false,reveal:1};
+  g.map.mines.push(mine);
+  g.state.selected=new Set([0]);
+  g.shoot(u,mine);
+  for(let i=0;i<50;i++)g.tick(.02);
+  assert.equal(mine.exploded,true);assert.equal(mine.armed,false);
+  assert.ok(u.hp>0,'shooter survives outside the blast');
+});
+
+test('mobile vehicle button boards and then exits a nearby jeep',()=>{
+  const g=game();g.enterBootCamp();
+  const jeep=g.map.vehicles[0];
+  assert.ok(jeep);assert.equal(jeep.type,'jeep');
+  g.squad.forEach(u=>Object.assign(u,{x:jeep.x,y:jeep.y,path:[]}));
+  g.buttons('touch-vehicle').onclick();
+  assert.equal(jeep.occupants.length,2);
+  assert.ok(g.squad.filter(u=>u.vehicleId===jeep.id).length===2);
+  g.buttons('touch-vehicle').onclick();
+  assert.equal(jeep.occupants.length,0);
+  assert.ok(g.squad.every(u=>u.vehicleId==null));
+});
+
+test('vehicle button walks the squad to a distant jeep then boards',()=>{
+  const g=game();g.enterBootCamp();
+  const jeep=g.map.vehicles[0];
+  g.squad.forEach(u=>Object.assign(u,{x:jeep.x+90,y:jeep.y,path:[],followLeaderId:null,vehicleId:null}));
+  g.buttons('touch-vehicle').onclick();
+  assert.ok(g.squad.every(u=>u.vehicleId==null));
+  assert.equal(g.state.pendingBoard,jeep.id);
+  for(let i=0;i<160;i++)g.tick(.02);
+  assert.ok(g.squad.some(u=>u.vehicleId===jeep.id),'soldiers board after walking up');
+  assert.ok(g.squad[0].hp>0);
+});
+
 test('campaign ends when the recruit pool is empty',()=>{
   const g=game();g.startMission();
   g.state.campaign.roster.forEach(r=>r.dead=true);

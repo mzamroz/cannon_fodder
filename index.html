@@ -54,7 +54,7 @@
             <button id="new-campaign" class="text-button new-campaign">Nowa kampania</button>
             <div id="save-status" class="save-note" role="status">Postęp zapisuje się automatycznie w tej przeglądarce.</div>
             <div class="briefing-note" id="overlay-note">Ruch: LPM · Ogień: PPM · G granat · R rakieta · X podziel · C scal<br>Tab grupa · 1–4 żołnierz · Shift lasso · WASD/strzałki zwiad · F kamera · E pojazd · M mapa · Spacja/P/Esc pauza</div>
-            <div class="briefing-note touch-note">RUCH: stuknij mapę · OGIEŃ: przytrzymaj palec<br>Przytrzymaj GRANAT lub RAKIETA, by celować · stuknij żołnierza, by prowadzić</div>
+            <div class="briefing-note touch-note">RUCH: stuknij mapę · OGIEŃ: przytrzymaj palec<br>POJAZD: wsiądź przy dżipie · minę zestrzelisz z dystansu<br>Przytrzymaj GRANAT lub RAKIETA, by celować · stuknij żołnierza, by prowadzić</div>
           </div>
         </div>
       </div>
@@ -69,6 +69,7 @@
           <button id="touch-split" type="button">PODZIEL</button>
           <button id="touch-merge" type="button">SCAL</button>
           <button id="touch-lasso" type="button">LASSO</button>
+          <button id="touch-vehicle" type="button" aria-label="Wsiądź lub wysiądź z pojazdu">POJAZD</button>
           <button id="touch-center" type="button" aria-label="Wycentruj kamerę na oddziale">CENTRUJ</button>
         </div>
       </div>
@@ -78,7 +79,7 @@
   <script>
   (()=>{
     const tag=document.currentScript;
-    const fallback='2.1.6';
+    const fallback='2.1.8';
     const load=v=>{
       window.TF_BUILD=v;
       const css=document.getElementById('app-css');
