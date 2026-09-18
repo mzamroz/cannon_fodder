@@ -319,6 +319,23 @@ test('vehicle button walks the squad to a distant jeep then boards',()=>{
   assert.ok(g.squad[0].hp>0);
 });
 
+test('moving jeep runs over enemies but not leftover squadmates',()=>{
+  const g=game();g.enterBootCamp();
+  const jeep=g.map.vehicles[0];
+  g.squad.forEach(u=>Object.assign(u,{x:jeep.x,y:jeep.y,path:[],followLeaderId:null,vehicleId:null}));
+  g.buttons('touch-vehicle').onclick();
+  assert.equal(jeep.occupants.length,2);
+  const leftover=g.squad.filter(u=>u.vehicleId==null);
+  leftover.forEach(u=>Object.assign(u,{x:jeep.x+40,y:jeep.y,path:[],followLeaderId:null}));
+  g.map.enemies=[{x:jeep.x+40,y:jeep.y,home:{x:jeep.x+40,y:jeep.y},role:'rifle',hp:65,maxHp:65,id:99,cooldown:99,angle:0,path:[],repath:0,patrol:99,alert:0,aimTime:0}];
+  g.state.selected=new Set(jeep.occupants);
+  g.issueMove({x:jeep.x+220,y:jeep.y});
+  leftover.forEach(u=>Object.assign(u,{x:jeep.x+40,y:jeep.y,path:[]}));
+  for(let i=0;i<80;i++)g.tick(.02);
+  assert.ok(leftover.every(u=>u.hp===100),'friendly stragglers survive a jeep drive-by');
+  assert.ok(g.map.enemies[0].hp<=0,'enemy soldiers are run over');
+});
+
 test('campaign ends when the recruit pool is empty',()=>{
   const g=game();g.startMission();
   g.state.campaign.roster.forEach(r=>r.dead=true);

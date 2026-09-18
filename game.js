@@ -475,10 +475,7 @@ function tick(dt){
     if(v.type!=='turret')moveUnit(map,v,dt,vehicleSpeed(v.type));
     for(const id of v.occupants){const u=squad[id];if(u&&u.hp>0){u.x=v.x;u.y=v.y;u.angle=v.angle;u.path=[];u.swimming=false;}}
     if((v.type==='tank'||v.type==='jeep')&&(v.path.length||Math.hypot(v.vx||0,v.vy||0)>12)){
-      for(const t of [...alive,...map.enemies.filter(e=>e.hp>0)]){
-        if(v.occupants.includes(t.id))continue;
-        if(distance(v,t)<17){t.role?damageEnemy(t,90):damageSoldier(t,90);}
-      }
+      for(const t of map.enemies)if(t.hp>0&&distance(v,t)<17)damageEnemy(t,90);
       for(const civ of map.civilians||[])if(civ.hp>0&&distance(v,civ)<17)damageCivilian(civ,40);
     }
     if(v.type==='tank'&&tileAt(map,v.x,v.y)===T_ICE&&(v.sink||0)>1.5)wreckVehicle(v);
