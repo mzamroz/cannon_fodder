@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#171d18" />
   <title>War has never been so much fun</title>
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=2.1.0" id="app-css" />
 </head>
 <body>
   <header class="topbar">
@@ -22,7 +22,7 @@
         <button id="regroup" class="regroup"><span>◎</span> Wybierz cały oddział <kbd>Q</kbd></button>
       </section>
       <section class="resources"><div><span>GRANATY</span><strong id="grenades">06</strong></div><div><span>RAKIETY</span><strong id="rockets">02</strong></div><div><span>WYNIK</span><strong id="score">0000</strong></div></section>
-      <div class="sidebar-footer"><span class="live-dot"></span> <span id="connection-status">ODDZIAŁ W GOTOWOŚCI</span><span class="version">v2.0</span></div>
+      <div class="sidebar-footer"><span class="live-dot"></span> <span id="connection-status">ODDZIAŁ W GOTOWOŚCI</span><span class="version" id="app-version">v2.1</span></div>
     </aside>
     <main class="main">
       <div class="map-toolbar"><div><span class="crosshair-icon">⌖</span> OBSZAR OPERACJI <span class="map-coords" id="coordinates">SEKTOR 04 / 04</span></div><div class="terrain-key"><i></i> SWOI <i></i> WRÓG <i></i> CEL</div></div>
@@ -40,9 +40,16 @@
             <h2 id="overlay-title">Mały oddział.<br>Wielka robota.</h2>
             <p id="overlay-description">Za linią wroga liczy się każdy żołnierz. Poprowadź swój oddział, zlikwiduj przeciwników i zniszcz ich posterunki.</p>
             <div id="scoreboard" class="scoreboard hidden" aria-live="polite"><span>HOME TEAM</span><strong id="home-score">0</strong><em>vs</em><strong id="away-score">0</strong><span>AWAY TEAM</span></div>
+            <canvas id="world-map" class="world-map hidden" width="360" height="110" aria-label="Mapa teatrów wojny"></canvas>
+            <div id="hub-roster" class="hub-roster"></div>
+            <button id="deploy" class="primary-button">WYRUSZ <span>↗</span></button>
+            <div id="hub-actions" class="hub-actions hidden">
+              <button id="bootcamp" class="text-button" type="button">TRENING · BOOT CAMP</button>
+              <button id="toggle-graves" class="text-button" type="button">CMENTARZ</button>
+            </div>
+            <div id="grave-panel" class="grave-panel hidden"><ol id="grave-list"></ol></div>
             <div id="heroes-hill" class="heroes-hill"><canvas id="hill-canvas" width="360" height="92" aria-label="Wzgórze bohaterów"></canvas><div class="recruits-line">REKRUCI <span id="recruit-count">356</span> · POLEGLI <span id="grave-count">0</span> / 360</div></div>
             <div id="briefing-details" class="briefing-details"><div><strong>04</strong><span>ŻOŁNIERZY</span></div><div><strong>∞</strong><span>LOSOWYCH MAP</span></div><div><strong>01</strong><span>WSPÓLNY CEL</span></div></div>
-            <button id="deploy" class="primary-button">ROZPOCZNIJ OPERACJĘ <span>↗</span></button>
             <button id="reroll" class="text-button">⟳ &nbsp; Wylosuj inny teren</button>
             <button id="new-campaign" class="text-button new-campaign">Nowa kampania</button>
             <div id="save-status" class="save-note" role="status">Postęp zapisuje się automatycznie w tej przeglądarce.</div>
@@ -63,6 +70,29 @@
       <footer class="controls"><div><span class="mouse-icon">↖</span><strong>LPM</strong> Ruch</div><div><span class="mouse-icon">⌖</span><strong>PPM</strong> Ogień</div><div><kbd>G</kbd> Granat</div><div class="ctrl-rocket"><kbd>R</kbd> Rakieta</div><div class="ctrl-split"><kbd>X</kbd> Podziel</div><div class="ctrl-tab"><kbd>TAB</kbd> Grupa</div><div class="ctrl-lasso"><kbd>SHIFT</kbd> Lasso</div><div class="ctrl-scout"><kbd>WASD</kbd> / <kbd>↑</kbd> Zwiad</div><div><kbd>SPACJA</kbd> / <kbd>P</kbd> / <kbd>ESC</kbd> Pauza</div><span class="controls-end">WAR HAS NEVER BEEN SO MUCH FUN.</span></footer>
     </main>
   </div>
-  <script type="module" src="game.js"></script>
+  <script>
+  (()=>{
+    const tag=document.currentScript;
+    const fallback='2.1.2';
+    const load=v=>{
+      window.TF_BUILD=v;
+      const css=document.getElementById('app-css');
+      if(css)css.href='style.css?v='+encodeURIComponent(v);
+      const badge=document.getElementById('app-version');
+      if(badge)badge.textContent='v'+v;
+      if(HTMLScriptElement.supports?.('importmap')){
+        const map=document.createElement('script');
+        map.type='importmap';
+        map.textContent=JSON.stringify({imports:{'./engine.js':'./engine.js?v='+v,'./save.js':'./save.js?v='+v}});
+        tag.before(map);
+      }
+      const s=document.createElement('script');
+      s.type='module';
+      s.src='game.js?v='+encodeURIComponent(v);
+      tag.after(s);
+    };
+    fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{v:fallback}).then(d=>load(d.v||fallback)).catch(()=>load(fallback));
+  })();
+  </script>
 </body>
 </html>

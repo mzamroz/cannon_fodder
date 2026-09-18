@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateMap,findPath,walkable,lineClear,moveUnit,TILE,COLS,ROWS,difficultyFor,missionStatus,updateSites,createCampaign,deploySquad,settleMission,recruitsLeft,rankStats,spawnFromHuts,pointInPolygon,aimAssist,RECRUIT_POOL,T_WATER,T_WALL} from '../engine.js';
+import {generateMap,generateBootCamp,findPath,walkable,lineClear,moveUnit,TILE,COLS,ROWS,difficultyFor,missionStatus,updateSites,createCampaign,deploySquad,settleMission,settleBootCamp,recruitsLeft,rankStats,spawnFromHuts,pointInPolygon,aimAssist,RECRUIT_POOL,T_WATER,T_WALL,dropTrail,followPoint,waveTarget,blastGates,explosiveShotsOnMap,hutCountFor} from '../engine.js';
 
 test('same seed and mission reproduce terrain, enemies and supplies',()=>{
   assert.deepEqual(generateMap(12345,3),generateMap(12345,3));
@@ -66,14 +66,15 @@ test('threat grows gradually, enemy roles unlock in stages and scaling stops',()
   assert.ok(generateMap(3,6).enemies.some(e=>e.role==='gunner'));
 });
 
-test('capture needs presence, pauses when contested and retains earned progress',()=>{
+test('capture needs presence, decays when contested or abandoned, then completes',()=>{
   const map=generateMap(42,4),site=map.sites[0],squad=[{...site,hp:100}];
   map.enemies.forEach(e=>e.hp=0);
   updateSites(map,[],20);assert.equal(site.progress,0);
   updateSites(map,squad,3);assert.equal(site.progress,3);assert.equal(site.done,false);
   const guard=map.enemies[0];Object.assign(guard,{x:site.x,y:site.y,hp:65});
-  updateSites(map,squad,10);assert.equal(site.progress,3);assert.equal(site.contested,true);
-  guard.hp=0;updateSites(map,squad,5);assert.equal(site.done,true);
+  updateSites(map,squad,2);assert.ok(site.progress<3);assert.equal(site.contested,true);
+  guard.hp=0;updateSites(map,[],3);assert.ok(site.progress<3);
+  updateSites(map,squad,8);assert.equal(site.done,true);
   assert.equal(missionStatus(map,squad).primary,false,'both radios are required');
 });
 
@@ -150,4 +151,46 @@ test('lasso polygon and aim assist lock onto the cone',()=>{
   const origin={x:0,y:0},aim={x:100,y:0};
   const locked=aimAssist(origin,aim,[{x:90,y:8,hp:50},{x:90,y:80,hp:50}],0.7,200);
   assert.equal(locked.x,90);assert.equal(locked.y,8);
+});
+
+test('snake trail follows the leader',()=>{
+  const leader={x:0,y:0,trail:[],angle:0};
+  for(let x=0;x<=80;x+=10){leader.x=x;dropTrail(leader);}
+  assert.ok(leader.trail.length>3);
+  const behind=followPoint(leader,1,22);
+  assert.ok(behind.x<leader.x);
+});
+
+test('mission ammo is tight and maps hide enough explosives for bunkers',()=>{
+  assert.equal(difficultyFor(1).grenades,2);assert.equal(difficultyFor(1).rockets,0);
+  assert.equal(difficultyFor(3).grenades,hutCountFor(3));
+  for(let mission=1;mission<=12;mission++){
+    const map=generateMap(mission*17,mission);
+    const shots=map.difficulty.grenades+map.difficulty.rockets+explosiveShotsOnMap(map);
+    assert.ok(shots>=map.huts.length,`mission ${mission} needs explosives for every bunker`);
+    if(mission>=2)assert.ok(map.huts.every(h=>h.choke&&h.flank));
+    if(mission>=3)assert.ok(map.gates.length>=1);
+  }
+});
+
+test('gates open only to blasts and spawned waves push through the choke',()=>{
+  const map=generateMap(21,3),gate=map.gates[0];
+  assert.ok(gate);assert.equal(gate.open,false);
+  const tile=map.tiles[gate.cells[0].y*map.cols+gate.cells[0].x];
+  assert.equal(tile,T_WALL);
+  blastGates(map,{x:gate.x+400,y:gate.y},110);assert.equal(gate.open,false);
+  blastGates(map,gate,110);assert.equal(gate.open,true);
+  map.huts[0].spawnTimer=0;const before=map.enemies.length;spawnFromHuts(map,0.05);
+  const wave=map.enemies.at(-1);
+  assert.equal(map.enemies.length,before+1);
+  assert.ok(waveTarget(map,wave));
+});
+
+test('boot camp is a drill that never wins and deaths are permanent',()=>{
+  const map=generateBootCamp(7);
+  assert.equal(map.bootcamp,true);assert.equal(map.operation.type,'drill');
+  assert.equal(missionStatus(map,[{hp:100,...map.spawn}]).won,false);
+  const c=createCampaign(),squad=deploySquad(c,map.spawn,[]);
+  squad[0].hp=0;settleBootCamp(c,squad,1);
+  assert.equal(c.roster[0].dead,true);assert.equal(c.roster[1].rank,0);
 });

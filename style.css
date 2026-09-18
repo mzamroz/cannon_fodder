@@ -79,7 +79,25 @@ body>.workspace{flex:1;min-height:0;height:auto}
   .resources{padding:8px 6px;gap:8px}
 }
 
-@media (hover:none){button:hover{filter:none}}
+.world-map{display:block;width:100%;height:72px;image-rendering:pixelated;margin:0 0 8px;border:1px solid #47533b;background:#182018}
+.world-map.hidden{display:none}
+.hub-roster{display:grid;grid-template-columns:1fr 1fr;gap:8px;font:8px/1.5 'IBM Plex Mono',monospace;color:#9aa684;margin:0 0 10px}
+.hub-roster strong{display:block;color:var(--accent);letter-spacing:.8px;margin-bottom:4px}
+.hub-roster.hidden,.heroes-hill.hidden{display:none}
+.hub-actions{display:flex;gap:8px;margin:4px 0 10px}
+.hub-actions.hidden{display:none}
+.hub-actions .text-button{padding:10px 6px}
+.overlay.hub .briefing-insignia,.overlay.hub .briefing-details,.overlay.hub #overlay-note,.overlay.hub .heroes-hill canvas{display:none}
+.overlay.hub .briefing h2{font-size:40px;margin-bottom:10px}
+.overlay.hub .briefing p{margin-bottom:12px}
+.overlay.hub .heroes-hill{margin-bottom:8px;padding:4px 8px}
+.overlay.hub .heroes-hill.hidden{display:none}
+.overlay.hub .recruits-line{margin-top:0}
+.grave-panel{max-height:110px;overflow:auto;margin:0 0 12px;border:1px solid #47533b;padding:8px 10px;background:#182018}
+.grave-panel.hidden{display:none}
+.grave-panel ol{margin:0;padding:0 0 0 16px;font:8px/1.7 'IBM Plex Mono',monospace;color:#b3bda6}
+.grave-panel strong{color:var(--text)}
+.soldier-name .medals{color:var(--accent);margin-left:4px;letter-spacing:1px}
 
 @media (max-height:500px) and (max-width:960px){
   .sidebar{height:56px}
