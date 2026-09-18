@@ -14,7 +14,7 @@ function game(mission=1,options={}){
   function node(id){if(!nodes.has(id))nodes.set(id,{id,width:192,height:144,style:{},classList:{add:noop,remove:noop,toggle:noop},getContext:()=>drawing,getBoundingClientRect:()=>({width:1100,height:700,left:0,top:0}),querySelector:()=>node(`${id}-child`),setAttribute:noop,addEventListener:noop,focus:noop});return nodes.get(id);}
   const context=vm.createContext({...engine,...saves,localStorage,testEvents:events,console,Math,Number,String,Set,URL,URLSearchParams,Uint32Array,devicePixelRatio:1,crypto:{getRandomValues:a=>(a[0]=12345,a)},location:{search:options.search??(mission===1?'':`?mission=${mission}`),href:'http://localhost:5173/'},navigator:{},document:{getElementById:node,querySelector:node,createElement:()=>node(Math.random()),addEventListener:(name,fn)=>events[name]=fn},window:{history:{replaceState:(state,title,url)=>events.savedURL=url},addEventListener:(name,fn)=>events[name]=fn,confirm:options.confirm??(()=>true)},ResizeObserver:class{observe(){}},requestAnimationFrame:noop});
   const source=readFileSync(new URL('../game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');
-  vm.runInContext(source+'\nthis.testGame={state,events:testEvents,document,saveProgress,endMission,get map(){return map},get squad(){return squad},tick,initMission,startMission,pause,issueMove,throwGrenade,damageEnemy,damageSoldier,explode,select,regroup,render,renderMini,miniProjection,clampCamera,shoot,buttons: $};',context);
+  vm.runInContext(source+'\nthis.testGame={state,events:testEvents,document,saveProgress,endMission,get map(){return map},get squad(){return squad},tick,initMission,startMission,pause,issueMove,throwGrenade,throwRocket,throwHeavy,splitSquad,mergeSquad,cycleGroup,toggleVehicle,damageEnemy,damageSoldier,explode,select,regroup,render,renderMini,miniProjection,clampCamera,shoot,buttons: $};',context);
   return context.testGame;
 }
 
@@ -198,4 +198,75 @@ test('new campaign can be cancelled, then replaces the save with mission one',()
   assert.equal(storage.get(saves.SAVE_KEY),before);
   g.buttons('new-campaign').onclick();const loaded=game(1,{storage});
   assert.equal(loaded.state.mission,1);assert.equal(loaded.state.score,0);assert.equal(loaded.state.phase,'briefing');
+});
+
+test('split and merge create persistent subgroups',()=>{
+  const g=game();g.startMission();
+  g.splitSquad();
+  assert.equal(g.state.selected.size,2);
+  assert.ok(g.squad.some(u=>u.group!==g.squad[0].group));
+  g.mergeSquad();
+  assert.equal(new Set(g.squad.map(u=>u.group)).size,1);
+  assert.equal(g.state.selected.size,4);
+});
+
+test('grenades inflict friendly fire but not at grenade-test range',()=>{
+  const g=game();g.startMission();
+  const hp=g.squad[0].hp;
+  g.explode({x:g.squad[0].x+200,y:g.squad[0].y});
+  assert.equal(g.squad[0].hp,hp);
+  g.explode({x:g.squad[0].x,y:g.squad[0].y});
+  assert.ok(g.squad[0].hp<hp);
+});
+
+test('posterunki spawn reinforcements after a delay and stop when destroyed',()=>{
+  const g=game();g.startMission();
+  const before=g.map.enemies.length;
+  g.map.huts[0].spawnTimer=0;g.tick(.02);
+  assert.ok(g.map.enemies.length>before);
+  g.map.huts.forEach(h=>h.hp=0);g.state.hutsDone=g.map.huts.length;
+  const mid=g.map.enemies.length;
+  g.map.huts.forEach(h=>h.spawnTimer=0);g.tick(.02);
+  assert.equal(g.map.enemies.length,mid);
+});
+
+test('permadeath replaces fallen soldiers from the recruit pool',()=>{
+  const g=game();g.startMission();
+  const first=g.squad.map(u=>u.name);
+  g.squad.forEach(u=>g.damageSoldier(u,100));g.tick(.02);
+  assert.equal(g.state.phase,'lost');
+  assert.equal(g.state.campaign.graves.length,4);
+  g.buttons('deploy').onclick();
+  assert.equal(g.squad.length,4);
+  assert.ok(g.squad.every(u=>u.hp===100));
+  assert.ok(g.squad.every(u=>!first.includes(u.name)));
+  assert.equal(engine.recruitsLeft(g.state.campaign),356);
+});
+
+test('survivors are promoted and keep their names into the next mission',()=>{
+  const g=game();g.startMission();
+  g.map.enemies.forEach(e=>g.damageEnemy(e,100,0));g.map.huts.forEach(h=>g.explode(h));g.tick(.02);
+  const names=g.squad.filter(u=>u.hp>0).map(u=>u.name);
+  assert.equal(g.state.phase,'won');
+  g.buttons('deploy').onclick();
+  assert.ok(g.squad.every(u=>names.includes(u.name)));
+  assert.ok(g.squad.every(u=>u.rank===1));
+});
+
+test('rockets consume a separate ammo pool and huts still fall',()=>{
+  const g=game();g.startMission();
+  const rockets=g.state.rockets,hut=g.map.huts[0];
+  g.squad[0].x=hut.x-120;g.squad[0].y=hut.y;g.state.selected=new Set([0]);
+  g.state.pointer.worldX=hut.x;g.state.pointer.worldY=hut.y;
+  g.throwRocket();assert.equal(g.state.rockets,rockets-1);
+  for(let i=0;i<40;i++)g.tick(.02);
+  assert.equal(hut.hp,0);
+});
+
+test('campaign ends when the recruit pool is empty',()=>{
+  const g=game();g.startMission();
+  g.state.campaign.roster.forEach(r=>r.dead=true);
+  g.squad.forEach(u=>{g.state.campaign.roster[u.recruitId].dead=false;g.damageSoldier(u,100);});
+  g.tick(.02);
+  assert.equal(g.state.phase,'over');
 });

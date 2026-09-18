@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateMap,findPath,walkable,lineClear,moveUnit,TILE,COLS,ROWS,difficultyFor,missionStatus,updateSites} from '../engine.js';
+import {generateMap,findPath,walkable,lineClear,moveUnit,TILE,COLS,ROWS,difficultyFor,missionStatus,updateSites,createCampaign,deploySquad,settleMission,recruitsLeft,rankStats,spawnFromHuts,pointInPolygon,aimAssist,RECRUIT_POOL,T_WATER,T_WALL} from '../engine.js';
 
 test('same seed and mission reproduce terrain, enemies and supplies',()=>{
   assert.deepEqual(generateMap(12345,3),generateMap(12345,3));
@@ -95,4 +95,50 @@ test('navigation respects rectangular map boundaries including invalid start pos
   assert.equal(walkable(map,12*TILE,24),false);
   assert.equal(walkable(map,24,40*TILE),false);
   assert.deepEqual(findPath(map,{x:-1,y:24},b),[]);
+});
+
+test('soldiers can swim water but walls still block, and pathfinding prefers bridges',()=>{
+  const map={cols:12,rows:8,tiles:new Uint8Array(12*8)};
+  for(let y=0;y<8;y++)map.tiles[y*12+5]=T_WATER;
+  map.tiles[3*12+5]=4;
+  assert.equal(walkable(map,5*TILE+24,24),true);
+  assert.equal(walkable(map,5*TILE+24,24,{fly:true}),true);
+  const wall={cols:8,rows:8,tiles:new Uint8Array(64)};wall.tiles[20]=T_WALL;
+  assert.equal(walkable(wall,4*TILE+24,2*TILE+24),false);
+  const start={x:2*TILE+24,y:3*TILE+24},goal={x:8*TILE+24,y:3*TILE+24};
+  const path=findPath(map,start,goal);
+  assert.ok(path.some(p=>Math.floor(p.x/TILE)===5&&Math.floor(p.y/TILE)===3),'bridge is the cheap crossing');
+});
+
+test('campaign roster, promotions and permadeath',()=>{
+  const c=createCampaign();
+  assert.equal(c.roster.length,RECRUIT_POOL);
+  assert.equal(c.roster[0].name,'JOOLS');
+  const spawn={x:10,y:10},squad=deploySquad(c,spawn,[]);
+  assert.equal(squad.length,4);assert.equal(squad[0].name,'JOOLS');
+  squad[0].hp=0;settleMission(c,squad,1,true);
+  assert.equal(c.roster[0].dead,true);assert.equal(c.graves.length,1);
+  assert.equal(c.roster[1].rank,1);
+  const next=deploySquad(c,spawn,squad.filter(u=>u.hp>0));
+  assert.equal(next[0].name,'JOPS');assert.ok(next.every(u=>u.recruitId!==0));
+  assert.equal(recruitsLeft(c),RECRUIT_POOL-1);
+  const stats=rankStats(7);assert.ok(stats.range>rankStats(0).range);assert.ok(stats.cooldown<rankStats(0).cooldown);
+});
+
+test('huts emit a rifleman until destroyed',()=>{
+  const map=generateMap(9,1),before=map.enemies.length;
+  map.huts[0].spawnTimer=0;spawnFromHuts(map,0.05);
+  assert.equal(map.enemies.length,before+1);
+  assert.equal(map.enemies.at(-1).role,'rifle');
+  map.huts.forEach(h=>{h.hp=0;h.spawnTimer=0;});
+  spawnFromHuts(map,0.05);assert.equal(map.enemies.length,before+1);
+});
+
+test('lasso polygon and aim assist lock onto the cone',()=>{
+  const poly=[{x:0,y:0},{x:10,y:0},{x:10,y:10},{x:0,y:10}];
+  assert.equal(pointInPolygon({x:5,y:5},poly),true);
+  assert.equal(pointInPolygon({x:20,y:5},poly),false);
+  const origin={x:0,y:0},aim={x:100,y:0};
+  const locked=aimAssist(origin,aim,[{x:90,y:8,hp:50},{x:90,y:80,hp:50}],0.7,200);
+  assert.equal(locked.x,90);assert.equal(locked.y,8);
 });

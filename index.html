@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#171d18" />
   <title>War has never been so much fun</title>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="Tiny Front — strona główna"><span class="brand-icon">✣</span> TINY FRONT<span class="brand-tag">TACTICAL SQUAD GAME</span></a>
+    <a class="brand" href="./" aria-label="Tiny Front — strona główna"><span class="brand-icon">✣</span> TINY FRONT<span class="brand-tag">WAR HAS NEVER BEEN SO MUCH FUN</span></a>
     <div class="top-center"><span class="live-dot"></span> DOWÓDZTWO OPERACYJNE <span class="divider">/</span> <span id="header-mission">MISJA 01</span></div>
     <div class="top-actions"><button id="save" class="icon-button" title="Zapisz postęp w tej przeglądarce">ZAPISZ</button><button id="sound" class="icon-button" aria-label="Włącz dźwięk" title="Dźwięk">DŹWIĘK: OFF</button><button id="pause" class="icon-button" aria-label="Pauza">Ⅱ <span>PAUZA</span></button></div>
   </header>
@@ -17,24 +17,48 @@
     <aside class="sidebar">
       <section class="operation"><div class="eyebrow"><span class="tiny-square"></span> TWOJA OPERACJA</div><div class="operation-number">01 <span>/ ∞</span></div><h1 id="operation-title">Zielony horyzont</h1><p id="biome-label">LAS UMIARKOWANY · ŚWIT</p><div class="mission-profile"><span id="mission-terrain"></span><span id="mission-difficulty"></span></div><div class="seed-line">ZIARNO MAPY <span id="seed-label">—</span><button id="copy-seed" aria-label="Kopiuj ziarno mapy" title="Kopiuj ziarno">⧉</button></div></section>
       <section class="objectives"><div class="section-title">CELE MISJI <span id="objective-count">0/2</span></div><div class="objective" id="enemy-objective"><span class="check">·</span><div><span id="primary-label">Wyeliminuj garnizon</span><small id="primary-progress">0 / 8 wyeliminowanych</small></div></div><div class="objective" id="hut-objective"><span class="check">·</span><div><span id="secondary-label">Zniszcz posterunki</span><small id="secondary-progress">0 / 2 zniszczonych</small></div></div></section>
-      <section class="squad-section"><div class="section-title">TWÓJ ODDZIAŁ <span id="alive-count">04</span></div><div id="squad-list"></div><button id="regroup" class="regroup"><span>◎</span> Wybierz cały oddział <kbd>Q</kbd></button></section>
-      <section class="resources"><div><span>GRANATY</span><strong id="grenades">06</strong></div><div><span>WYNIK</span><strong id="score">0000</strong></div></section>
-      <div class="sidebar-footer"><span class="live-dot"></span> <span id="connection-status">ODDZIAŁ W GOTOWOŚCI</span><span class="version">v1.0</span></div>
+      <section class="squad-section"><div class="section-title">TWÓJ ODDZIAŁ <span id="alive-count">04</span></div><div id="squad-list"></div>
+        <div class="squad-actions"><button id="split" class="regroup"><span>✂</span> Split <kbd>X</kbd></button><button id="merge" class="regroup"><span>◎</span> Merge <kbd>C</kbd></button></div>
+        <button id="regroup" class="regroup"><span>◎</span> Wybierz cały oddział <kbd>Q</kbd></button>
+      </section>
+      <section class="resources"><div><span>GRANATY</span><strong id="grenades">06</strong></div><div><span>RAKIETY</span><strong id="rockets">02</strong></div><div><span>WYNIK</span><strong id="score">0000</strong></div></section>
+      <div class="sidebar-footer"><span class="live-dot"></span> <span id="connection-status">ODDZIAŁ W GOTOWOŚCI</span><span class="version">v2.0</span></div>
     </aside>
     <main class="main">
       <div class="map-toolbar"><div><span class="crosshair-icon">⌖</span> OBSZAR OPERACJI <span class="map-coords" id="coordinates">SEKTOR 04 / 04</span></div><div class="terrain-key"><i></i> SWOI <i></i> WRÓG <i></i> CEL</div></div>
       <div class="battlefield" id="battlefield">
-        <canvas id="game" aria-label="Pole bitwy. Lewy przycisk myszy: ruch. Prawy: strzelanie. G: granat." tabindex="0"></canvas>
+        <canvas id="game" aria-label="Pole bitwy. Lewy przycisk myszy: ruch. Prawy: strzelanie. G: granat. R: rakieta." tabindex="0"></canvas>
         <div class="field-top"><div class="mission-badge"><span class="live-dot"></span><span id="field-status">OCZEKIWANIE NA ROZKAZ</span></div><div class="timer" id="timer">00:00</div></div>
         <div id="toast" class="toast" role="status"></div>
+        <button id="center-cam" class="center-cam hidden" type="button">CENTER</button>
         <div class="minimap-wrap"><div class="minimap-heading">MAPA TAKTYCZNA <span>⌖</span></div><canvas id="minimap" width="192" height="144" aria-label="Minimapa terenu"></canvas></div>
-        <div class="field-bottom"><span class="key-hint"><kbd>F</kbd> CENTRUJ ODDZIAŁ</span><span id="weather">19°C <span>↗</span> WIATR 4 KM/H</span></div>
+        <div class="field-bottom"><span class="key-hint"><kbd>F</kbd> CENTRUJ ODDZIAŁ · <kbd>X</kbd> SPLIT · <kbd>E</kbd> POJAZD</span><span id="weather">19°C <span>↗</span> WIATR 4 KM/H</span></div>
         <div id="overlay" class="overlay">
-          <div class="briefing"><div class="eyebrow" id="overlay-eyebrow">DEPESZA Z DOWÓDZTWA / 001</div><div class="briefing-insignia" aria-hidden="true">✣</div><h2 id="overlay-title">Mały oddział.<br>Wielka robota.</h2><p id="overlay-description">Za linią wroga liczy się każdy żołnierz. Poprowadź swój oddział, zlikwiduj przeciwników i zniszcz ich posterunki.</p><div id="briefing-details" class="briefing-details"><div><strong>04</strong><span>ŻOŁNIERZY</span></div><div><strong>∞</strong><span>LOSOWYCH MAP</span></div><div><strong>01</strong><span>WSPÓLNY CEL</span></div></div><button id="deploy" class="primary-button">ROZPOCZNIJ OPERACJĘ <span>↗</span></button><button id="reroll" class="text-button">⟳ &nbsp; Wylosuj inny teren</button><button id="new-campaign" class="text-button new-campaign">Nowa kampania</button><div id="save-status" class="save-note" role="status">Postęp zapisuje się automatycznie w tej przeglądarce.</div><div class="briefing-note" id="overlay-note">Ruch: lewy przycisk myszy · Ogień: przytrzymaj prawy<br>Granat: G w kierunku kursora · Posterunki niszcz granatami</div></div>
+          <div class="briefing">
+            <div class="eyebrow" id="overlay-eyebrow">DEPESZA Z DOWÓDZTWA / 001</div>
+            <div class="briefing-insignia" aria-hidden="true">✣</div>
+            <h2 id="overlay-title">Mały oddział.<br>Wielka robota.</h2>
+            <p id="overlay-description">Za linią wroga liczy się każdy żołnierz. Poprowadź swój oddział, zlikwiduj przeciwników i zniszcz ich posterunki.</p>
+            <div id="scoreboard" class="scoreboard hidden" aria-live="polite"><span>HOME TEAM</span><strong id="home-score">0</strong><em>vs</em><strong id="away-score">0</strong><span>AWAY TEAM</span></div>
+            <div id="heroes-hill" class="heroes-hill"><canvas id="hill-canvas" width="360" height="92" aria-label="Wzgórze bohaterów"></canvas><div class="recruits-line">REKRUCI <span id="recruit-count">356</span> · POLEGLI <span id="grave-count">0</span> / 360</div></div>
+            <div id="briefing-details" class="briefing-details"><div><strong>04</strong><span>ŻOŁNIERZY</span></div><div><strong>∞</strong><span>LOSOWYCH MAP</span></div><div><strong>01</strong><span>WSPÓLNY CEL</span></div></div>
+            <button id="deploy" class="primary-button">ROZPOCZNIJ OPERACJĘ <span>↗</span></button>
+            <button id="reroll" class="text-button">⟳ &nbsp; Wylosuj inny teren</button>
+            <button id="new-campaign" class="text-button new-campaign">Nowa kampania</button>
+            <div id="save-status" class="save-note" role="status">Postęp zapisuje się automatycznie w tej przeglądarce.</div>
+            <div class="briefing-note" id="overlay-note">Ruch: lewy przycisk myszy · Ogień: przytrzymaj prawy<br>Granat: G · Rakieta: R · Split: X · Zwiad: WASD</div>
+          </div>
         </div>
-        <div class="mobile-controls"><button id="touch-mode">TRYB: RUCH</button><button id="touch-grenade">GRANAT</button><button id="touch-follow" aria-label="Wybierz i wycentruj oddział">◎ ODDZIAŁ</button></div>
+        <div class="mobile-controls">
+          <button id="touch-split">SPLIT</button>
+          <button id="touch-merge">MERGE</button>
+          <button id="touch-lasso">LASSO</button>
+          <button id="touch-grenade">GRANAT</button>
+          <button id="touch-rocket">RAKIETA</button>
+          <button id="touch-center" aria-label="Wycentruj kamerę na oddziale">CENTER</button>
+        </div>
       </div>
-      <footer class="controls"><div><span class="mouse-icon">↖</span><strong>LPM</strong> Ruch</div><div><span class="mouse-icon">⌖</span><strong>PPM</strong> Ogień</div><div><kbd>G</kbd> Granat</div><div><kbd>1–4</kbd> Wybór żołnierza</div><div><kbd>WASD</kbd> Kamera</div><div><kbd>SPACJA</kbd> Pauza</div><span class="controls-end">KAŻDA MAPA TO NOWA HISTORIA.</span></footer>
+      <footer class="controls"><div><span class="mouse-icon">↖</span><strong>LPM</strong> Ruch</div><div><span class="mouse-icon">⌖</span><strong>PPM</strong> Ogień</div><div><kbd>G</kbd> Granat</div><div><kbd>R</kbd> Rakieta</div><div><kbd>X</kbd> Split</div><div><kbd>WASD</kbd> Zwiad</div><div><kbd>SPACJA</kbd> Pauza</div><span class="controls-end">WAR HAS NEVER BEEN SO MUCH FUN.</span></footer>
     </main>
   </div>
   <script type="module" src="game.js"></script>
