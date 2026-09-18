@@ -71,7 +71,7 @@ export function decodeSave(raw,generateMap){
   map.huts.forEach((h,i)=>Object.assign(h,pick(data.huts[i],['hp','spawnTimer'])));
   map.sites.forEach((site,i)=>Object.assign(site,pick(data.sites[i],['progress','done','contested'])));
   map.pickups=data.pickups.map(p=>pick(p,['x','y','type','taken']));
-  if(data.mines)map.mines=data.mines.map(m=>({...m}));
+  if(data.mines)map.mines=data.mines.map(m=>({...m,reveal:1}));
   if(data.turrets)map.turrets=data.turrets.map((t,i)=>Object.assign({},map.turrets[i]||{maxHp:80,flash:0},t));
   if(data.vehicles)map.vehicles=data.vehicles.map((v,i)=>Object.assign({},map.vehicles[i]||{maxHp:v.hp,flash:0},v));
   return {map,state:{...pick(s,stateFields),selected:new Set(s.selected),campaign:data.campaign},squad:data.squad.map(u=>pick(u,soldierFields))};

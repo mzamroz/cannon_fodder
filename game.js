@@ -2,6 +2,15 @@ import {TILE,generateMap,walkable,lineClear,findPath,moveUnit,distance,missionSt
 import {SAVE_KEY,encodeSave,decodeSave} from './save.js';
 
 const $=id=>document.getElementById(id);
+function isTouchUI(){
+  return !!(window.matchMedia?.('(pointer: coarse)')?.matches
+    || window.matchMedia?.('(hover: none)')?.matches
+    || window.matchMedia?.('(max-width: 600px)')?.matches
+    || window.matchMedia?.('(max-height: 500px) and (max-width: 960px)')?.matches);
+}
+function syncTouchUI(){
+  document.documentElement?.classList?.toggle('touch-ui',isTouchUI());
+}
 const canvas=$('game'),ctx=canvas.getContext('2d'),mini=$('minimap'),mc=mini.getContext('2d');
 const GROUP_COL=['#d5ed91','#8fd4e8','#e8c56a','#e89b7a'];
 const pointers=new Map();
@@ -215,7 +224,7 @@ function updateUI(){
   }
   const active=state.phase==='playing';$('field-status').textContent=active?'OPERACJA W TOKU':state.phase==='paused'?'OPERACJA WSTRZYMANA':state.phase==='won'?'SEKTOR ZABEZPIECZONY':state.phase==='lost'||state.phase==='over'?'UTRACONO KONTAKT':'OCZEKIWANIE NA ROZKAZ';
   $('connection-status').textContent=active?'ŁĄCZNOŚĆ AKTYWNA':'ODDZIAŁ W GOTOWOŚCI';
-  $('pause').textContent=state.phase==='paused'?'▶ WZNÓW':'Ⅱ PAUZA';
+  $('pause').innerHTML=state.phase==='paused'?'▶ <span class="btn-label">WZNÓW</span>':'Ⅱ <span class="btn-label">PAUZA</span>';
   $('center-cam')?.classList.toggle('hidden',state.follow||state.phase!=='playing');
   $('home-score').textContent=String(state.kills);$('away-score').textContent=String(state.deaths);
 }
@@ -439,8 +448,6 @@ function tick(dt){
   }
   for(const m of map.mines||[]){
     if(m.exploded||!m.armed)continue;
-    const near=[...alive,...map.enemies.filter(e=>e.hp>0)].find(u=>distance(u,m)<48);
-    if(near)m.reveal=Math.min(1,(m.reveal||0)+dt*2);
     const hit=[...alive,...map.enemies.filter(e=>e.hp>0),(map.vehicles||[]).filter(v=>v.hp>0&&v.type!=='heli')].flat().find(u=>u&&distance(u,m)<20);
     if(hit){m.exploded=true;m.armed=false;explode(m,m.kind==='bamboo'?90:120);toast(m.kind==='bamboo'?'Pułapka bambusowa!':'Mina!');}
   }
@@ -485,26 +492,91 @@ function drawPickup(c,p){
   rect(c,x-10,y-9,20,18,'#374630');rect(c,x-8,y-7,16,13,col);rect(c,x-8,y+5,16,3,p.type==='med'?'#989f7c':'#976a42');
   if(p.type==='med'){rect(c,x-2,y-5,4,10,'#778d55');rect(c,x-5,y-2,10,4,'#778d55');}else if(p.type==='rocket'){rect(c,x-2,y-6,4,12,'#dfe7c8');rect(c,x-4,y-6,8,3,'#c45d45');}else{rect(c,x-3,y-4,6,9,'#574d32');rect(c,x-1,y-6,3,3,'#574d32');}
 }
-function drawVehicle(c,v){
-  const x=v.x,y=v.y;if(v.hp<=0){rect(c,x-18,y-10,36,20,'#4a4e3c88');return;}
-  c.save();c.translate(x,y);c.rotate(v.angle);
-  if(v.type==='heli'){rect(c,-22,-8,44,16,'#4d5a45');rect(c,-28,-2,12,4,'#2f382c');rect(c,8,-14,6,28,'#2f382c');rect(c,-4,-22,8,8,'#d6ed92');}
-  else if(v.type==='tank'){rect(c,-24,-14,48,28,'#5a6248');rect(c,-16,-8,24,16,'#3e4634');rect(c,8,-3,26,6,'#2c3328');}
-  else if(v.type==='turret'){rect(c,-12,-12,24,24,'#6a5b40');rect(c,-4,-4,22,8,'#2c3328');}
-  else{rect(c,-20,-10,40,20,'#6b7a4d');rect(c,-16,-14,12,8,'#d6ed92');rect(c,4,-6,22,5,'#2c3328');}
+function drawJeep(c,v){
+  c.fillStyle='#23331d55';c.beginPath();c.ellipse(1,3,22,12,0,0,Math.PI*2);c.fill();
+  const tire='#1a1c16',hub='#7a6e4e',olive='#6b7a4d',shade='#465436',glass='#d7e4b4';
+  rect(c,-18,-17,13,8,tire);rect(c,-18,9,13,8,tire);rect(c,7,-17,13,8,tire);rect(c,7,9,13,8,tire);
+  rect(c,-15,-15,7,4,hub);rect(c,-15,11,7,4,hub);rect(c,10,-15,7,4,hub);rect(c,10,11,7,4,hub);
+  rect(c,-19,-13,16,4,olive);rect(c,-19,9,16,4,olive);rect(c,5,-13,18,4,olive);rect(c,5,9,18,4,olive);
+  rect(c,-20,-9,42,18,olive);
+  rect(c,-18,-7,8,14,shade);
+  rect(c,-8,-7,16,14,'#242c1e');
+  rect(c,8,-8,16,16,olive);rect(c,10,-6,13,5,'#84965c');rect(c,10,3,13,4,shade);
+  rect(c,22,-7,5,14,'#2a3126');rect(c,23,-5,3,2,tire);rect(c,23,-1,3,2,tire);rect(c,23,3,3,2,tire);
+  rect(c,26,-8,3,16,'#4a4e3c');rect(c,22,-12,4,4,'#efe4a8');rect(c,22,8,4,4,'#efe4a8');
+  rect(c,7,-8,2,16,shade);rect(c,8,-7,2,14,glass);
+  rect(c,-5,-6,7,5,'#5c4a36');rect(c,-5,1,7,5,'#5c4a36');rect(c,3,-5,3,3,'#2c3328');
+  rect(c,-9,-11,2,22,shade);rect(c,-9,-12,14,2,shade);rect(c,-9,10,14,2,shade);
+  rect(c,-25,-6,7,12,tire);rect(c,-23,-4,4,8,hub);
+  if(v.occupants.length){rect(c,-4,-6,6,5,'#425738');if(v.occupants.length>1)rect(c,-4,1,6,5,'#425738');}
+  if(v.occupants.some(id=>squad[id]?.flash>0))rect(c,12,-3,6,6,'#ffeb9c');
+}
+function drawTank(c,v){
+  c.fillStyle='#23331d55';c.beginPath();c.ellipse(2,3,26,14,0,0,Math.PI*2);c.fill();
+  const hull='#5a6248',dark='#3e4634',track='#1a1c16',iron='#2c3328',light='#6e7658';
+  rect(c,-26,-17,52,8,track);rect(c,-26,9,52,8,track);
+  for(let i=0;i<8;i++){rect(c,-24+i*6,-16,4,6,'#2a2e24');rect(c,-24+i*6,10,4,6,'#2a2e24');}
+  rect(c,-24,-10,46,20,hull);rect(c,-22,-8,14,16,dark);rect(c,10,-8,12,16,light);rect(c,20,-6,4,12,dark);
+  rect(c,-26,-4,4,3,iron);rect(c,-26,1,4,3,iron);
+  rect(c,-10,-9,22,18,dark);rect(c,-8,-7,16,14,hull);rect(c,-4,-4,8,8,iron);
+  if(v.occupants.length)rect(c,-3,-3,6,6,'#425738');
+  rect(c,12,-4,8,8,dark);rect(c,10,-3,28,6,iron);rect(c,36,-4,5,8,iron);
+  if(v.occupants.some(id=>squad[id]?.flash>0))rect(c,38,-5,8,10,'#ffeb9c');
+}
+function drawHeli(c,v){
+  c.fillStyle='#23331d66';c.beginPath();c.ellipse(0,10,22,9,0,0,Math.PI*2);c.fill();
+  const body='#5a684c',dark='#2f382c',glass='#c5d6a8',skid='#2c3328';
+  rect(c,-16,8,38,3,skid);rect(c,-16,12,38,3,skid);rect(c,-10,6,3,8,skid);rect(c,10,6,3,8,skid);
+  rect(c,-34,-3,22,6,body);rect(c,-36,-12,5,22,dark);rect(c,-38,-8,3,4,dark);rect(c,-38,4,3,4,dark);
+  rect(c,-14,-8,30,16,body);rect(c,-10,-6,12,12,dark);rect(c,12,-7,16,14,body);rect(c,16,-5,12,10,glass);rect(c,20,-3,5,6,'#e8f0d0');
+  if(v.occupants.length){rect(c,18,-3,5,5,'#425738');if(v.occupants.length>1)rect(c,8,-3,5,5,'#425738');}
+  rect(c,-2,-12,4,8,dark);
+  c.save();c.rotate(visualTime*14);c.globalAlpha=.5;rect(c,-3,-28,6,56,dark);rect(c,-28,-3,56,6,dark);c.restore();
+  rect(c,-5,-5,10,10,'#3e4634');rect(c,-3,-3,6,6,'#6e7658');
+  if(v.occupants.some(id=>squad[id]?.flash>0))rect(c,26,-4,7,7,'#ffeb9c');
+}
+function drawEmplacement(c,angle,flash,occupied){
+  rect(c,-16,-12,32,26,'#6a5b40');rect(c,-13,-9,26,20,'#5a5040');
+  rect(c,-18,-8,5,16,'#7a6b50');rect(c,13,-8,5,16,'#7a6b50');rect(c,-12,10,24,5,'#7a6b50');
+  rect(c,-8,-8,16,16,'#3e3a30');
+  c.save();c.rotate(angle);
+  rect(c,-7,-7,16,14,'#4a4538');rect(c,-5,-5,12,10,'#6a5b40');rect(c,6,-5,10,10,'#3e4634');rect(c,8,-3,24,6,'#2c3328');rect(c,30,-4,4,8,'#2c3328');
+  if(occupied)rect(c,-3,-4,7,7,'#425738');
+  if(flash)rect(c,32,-5,8,10,'#ffeb9c');
   c.restore();
-  rect(c,x-12,y-22,24,3,'#33442c');rect(c,x-12,y-22,24*v.hp/v.maxHp,3,'#d6ed92');
+}
+function drawVehicle(c,v){
+  const x=v.x,y=v.y;
+  if(v.hp<=0){
+    c.save();c.translate(x,y);c.rotate(v.type==='turret'?0:v.angle||0);
+    if(v.type==='jeep'){rect(c,-18,-16,12,6,'#2a2c24');rect(c,-18,10,12,6,'#2a2c24');rect(c,7,-16,12,6,'#2a2c24');rect(c,7,10,12,6,'#2a2c24');rect(c,-20,-8,38,16,'#4a4e3c88');rect(c,-24,-5,6,10,'#2a2c24');}
+    else if(v.type==='tank'){rect(c,-26,-16,50,7,'#2a2c24');rect(c,-26,9,50,7,'#2a2c24');rect(c,-22,-8,42,16,'#4a4e3c88');rect(c,8,-2,18,4,'#2a2c24');}
+    else if(v.type==='heli'){rect(c,-18,-6,34,12,'#4a4e3c88');rect(c,-32,-2,16,4,'#2a2c24');rect(c,-20,-16,4,28,'#2a2c2488');}
+    else{rect(c,-14,-10,28,22,'#4a4e3c88');rect(c,4,-3,16,5,'#2a2c24');}
+    c.restore();return;
+  }
+  c.save();c.translate(x,y);
+  if(v.type==='turret')drawEmplacement(c,v.angle,v.occupants.some(id=>squad[id]?.flash>0),v.occupants.length>0);
+  else{
+    c.rotate(v.angle);
+    if(v.type==='heli')drawHeli(c,v);
+    else if(v.type==='tank')drawTank(c,v);
+    else drawJeep(c,v);
+  }
+  c.restore();
+  const barY=v.type==='heli'?y-34:y-26;
+  rect(c,x-12,barY,24,3,'#33442c');rect(c,x-12,barY,24*v.hp/v.maxHp,3,'#d6ed92');
 }
 function drawMine(c,m){
-  if(m.exploded||!(m.reveal>0.15))return;
+  if(m.exploded)return;
   const x=m.x,y=m.y;
-  if(m.kind==='bamboo'){rect(c,x-2,y-10,4,18,'#7a8a4a');rect(c,x-8,y-4,16,3,'#9aaa5a');}
-  else{c.fillStyle='#2a2e24';c.beginPath();c.arc(x,y,6,0,Math.PI*2);c.fill();rect(c,x-2,y-2,4,4,'#c45d45');}
+  c.strokeStyle='#c45d4588';c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.arc(x,y,14,0,Math.PI*2);c.stroke();c.setLineDash([]);
+  if(m.kind==='bamboo'){rect(c,x-3,y-14,6,24,'#7a8a4a');rect(c,x-10,y-5,20,4,'#c45d45');rect(c,x-2,y-16,4,6,'#9aaa5a');}
+  else{c.fillStyle='#1a1e16';c.beginPath();c.arc(x,y,8,0,Math.PI*2);c.fill();c.fillStyle='#c45d45';c.beginPath();c.arc(x,y,3,0,Math.PI*2);c.fill();rect(c,x-1,y-7,2,14,'#d6ed92');rect(c,x-7,y-1,14,2,'#d6ed92');}
 }
 function drawTurret(c,t){
-  if(t.hp<=0){rect(c,t.x-10,t.y-8,20,16,'#3e4236');return;}
-  rect(c,t.x-14,t.y-10,28,20,'#5a5040');
-  c.save();c.translate(t.x,t.y);c.rotate(t.angle);rect(c,0,-3,22,6,'#2c3328');if(t.flash>0)rect(c,20,-4,8,8,'#ffeb9c');c.restore();
+  if(t.hp<=0){rect(c,t.x-14,t.y-10,28,22,'#3e4236');rect(c,t.x-2,t.y-2,16,4,'#2a2c24');return;}
+  c.save();c.translate(t.x,t.y);drawEmplacement(c,t.angle,t.flash>0,false);c.restore();
 }
 
 function drawMissionMarkers(){
@@ -540,10 +612,13 @@ function render(){
   }
   for(const p of map.pickups)drawPickup(ctx,p);
   const visible=(x,y)=>Math.abs(x-state.camera.x)<viewW/scale/2+100&&Math.abs(y-state.camera.y)<viewH/scale/2+100;
-  const drawables=[
+  const scenery=[
     ...map.decorations.filter(d=>visible(d.x,d.y)).map(d=>({y:d.y,draw:()=>drawTree(ctx,d)})),
-    ...map.huts.map(h=>({y:h.y+18,draw:()=>drawHut(ctx,h)})),
-    ...(map.mines||[]).map(m=>({y:m.y,draw:()=>drawMine(ctx,m)})),
+    ...map.huts.map(h=>({y:h.y+18,draw:()=>drawHut(ctx,h)}))
+  ];
+  scenery.sort((a,b)=>a.y-b.y);scenery.forEach(d=>d.draw());
+  for(const m of map.mines||[])if(visible(m.x,m.y))drawMine(ctx,m);
+  const drawables=[
     ...(map.turrets||[]).filter(t=>visible(t.x,t.y)).map(t=>({y:t.y,draw:()=>drawTurret(ctx,t)})),
     ...(map.vehicles||[]).filter(v=>visible(v.x,v.y)).map(v=>({y:v.y+8,draw:()=>drawVehicle(ctx,v)})),
     ...map.enemies.filter(e=>e.hp>0&&visible(e.x,e.y)).map(e=>({y:e.y,draw:()=>{drawSoldier(ctx,e,e.x,e.y,true);if(e.alert>0){rect(ctx,e.x-7,e.y-26,14,2,'#794833');rect(ctx,e.x-7,e.y-26,14*e.hp/e.maxHp,2,'#e5a080');}}})),
@@ -578,6 +653,7 @@ function renderMini(){
   for(const site of map.sites){mc.strokeStyle=site.done?'#d6ed92':'#f7dc87';mc.strokeRect(site.x*sx-4,site.y*sy-4,8,8);}
   if(map.operation.type!=='clear'){mc.strokeStyle=state.evacReady?'#d6ed92':'#84976e';mc.beginPath();mc.arc(map.extraction.x*sx,map.extraction.y*sy,5,0,Math.PI*2);mc.stroke();}
   for(const p of map.pickups)if(!p.taken)rect(mc,p.x*sx-1,p.y*sy-1,3,3,p.type==='med'?'#e0e5bb':p.type==='rocket'?'#7d9bb0':'#d6a764');
+  for(const m of map.mines||[])if(!m.exploded)rect(mc,m.x*sx-1,m.y*sy-1,3,3,'#c45d45');
   for(const v of map.vehicles||[])if(v.hp>0)rect(mc,v.x*sx-2,v.y*sy-2,5,5,'#9bb56e');
   for(const u of liveSquad())rect(mc,u.x*sx-2,u.y*sy-2,4,4,'#e2f5a3');
   mc.strokeStyle='#edf1d5aa';mc.lineWidth=1;mc.strokeRect((state.camera.x-viewW/scale/2)*sx,(state.camera.y-viewH/scale/2)*sy,viewW/scale*sx,viewH/scale*sy);mc.restore();
@@ -588,12 +664,12 @@ function showOverlay(kind){
   const left=recruitsLeft(state.campaign);
   const data={
     briefing:{eyebrow:`DEPESZA Z DOWÓDZTWA / ${format(state.mission,3)}`,title:map.operation.name,description:`${map.operation.brief} ${map.layout.hint}`,button:'ROZPOCZNIJ OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
-    paused:{eyebrow:'ŁĄCZNOŚĆ WSTRZYMANA',title:'Chwila<br>na oddech.',description:'Oddział czeka na twój sygnał. Split (X) dzieli drużynę, C scala, Tab cykluje grupy. WASD to zwiad, F wraca kamerę. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:'↻  Rozpocznij misję od nowa'},
+    paused:{eyebrow:'ŁĄCZNOŚĆ WSTRZYMANA',title:'Chwila<br>na oddech.',description:isTouchUI()?'Oddział czeka. Lewa strona mapy to ruch, prawa to ogień. PODZIEL rozdziela grupę, SCAL łączy, LASSO zaznacza, CENTER wraca kamerę. Żołnierze sami strzelają do wrogów w zasięgu.':'Oddział czeka na twój sygnał. X dzieli drużynę, C scala grupy w pobliżu, Tab przełącza grupy, 1–4 wybiera żołnierza, Shift+przeciągnięcie to lasso. WASD lub strzałki to zwiad, F wraca kamerę, E to pojazd. Pauza: Spacja, P albo Escape. Żołnierze automatycznie strzelają do wrogów w zasięgu.',button:'WRÓĆ NA POLE BITWY',secondary:'↻  Rozpocznij misję od nowa'},
     won:{eyebrow:`RAPORT Z MISJI / ${format(state.mission,3)}`,title:'Sektor<br>zabezpieczony.',description:`${'★'.repeat(state.stars)}${'☆'.repeat(3-state.stars)} · ${liveSquad().length} z 4 żołnierzy wraca do bazy. Premia: +${state.bonus}. Ocalali awansują. Gwiazdki: wykonanie misji, pełny oddział, czas poniżej ${Math.floor(map.parTime/60)}:${format(map.parTime%60)}.`,button:'NASTĘPNA MISJA',secondary:'⟳  Rozegraj ten teren ponownie'},
     lost:{eyebrow:'RAPORT Z MISJI / UTRACONO KONTAKT',title:'To jeszcze<br>nie koniec.',description:`Polegli znikają na zawsze. Na wzgórzu zostało ${left} ochotników. Wykorzystuj osłony, dziel oddział i niszcz spawnerzy, zanim fala cię zaleje.`,button:'PONÓW OPERACJĘ',secondary:'⟳  Wylosuj inny teren'},
     over:{eyebrow:'KAMPANIA ZAKOŃCZONA',title:'Wzgórze<br>bohaterów.',description:'360 ochotników zeszło z zielonego wzgórza. Wojna pożarła ich wszystkich. War has never been so much fun.',button:'NOWA KAMPANIA',secondary:'—'}
   }[kind];
-  $('overlay-note').textContent=`${map.layout.name} · ${map.cols} × ${map.rows} · Zagrożenie ${map.difficulty.level}/13. Premia czasu do ${Math.floor(map.parTime/60)}:${format(map.parTime%60)} (bez limitu misji). ${state.mission>=6?'Ciężcy (Ⅱ) prowadzą szybki ogień. ':''}${state.mission>=3?'Strzelcy (⌖) celują przez chwilę — zejdź z linii. ':state.mission>=2?'Zwiadowcy (») szybko obchodzą flankę. ':''}LPM: ruch · PPM: ogień · G: granat · R: rakieta · X: split.`;
+  $('overlay-note').innerHTML=`${map.layout.name} · ${map.cols} × ${map.rows} · Zagrożenie ${map.difficulty.level}/13. Premia czasu do ${Math.floor(map.parTime/60)}:${format(map.parTime%60)} (bez limitu misji). ${state.mission>=6?'Ciężcy (Ⅱ) prowadzą szybki ogień. ':''}${state.mission>=3?'Strzelcy (⌖) celują przez chwilę — zejdź z linii. ':state.mission>=2?'Zwiadowcy (») szybko obchodzą flankę. ':''}<br>LPM ruch · PPM ogień · G granat · R rakieta · X podziel · C scal · Tab grupa · 1–4 żołnierz · Shift lasso · WASD/strzałki zwiad · F kamera · E pojazd · Spacja/P/Esc pauza`;
   $('overlay-eyebrow').textContent=data.eyebrow;$('overlay-title').innerHTML=data.title;$('overlay-description').textContent=data.description;$('deploy').innerHTML=`${data.button} <span>↗</span>`;$('reroll').textContent=data.secondary;
   $('scoreboard').classList.toggle('hidden',kind!=='won'&&kind!=='lost'&&kind!=='over');
   $('briefing-details').innerHTML=(kind==='won'||kind==='lost'||kind==='over')?`<div><strong>${format(state.kills)}</strong><span>WYELIMINOWANYCH</span></div><div><strong>${$('timer').textContent}</strong><span>CZAS OPERACJI</span></div><div><strong>${state.score}</strong><span>PUNKTÓW</span></div>`:`<div><strong>04</strong><span>ŻOŁNIERZY</span></div><div><strong>${format(map.enemies.length)}</strong><span>PRZECIWNIKÓW</span></div><div><strong>${format(map.sites.length||map.huts.length)}</strong><span>${map.operation.type==='rescue'?'JENIEC':map.operation.type==='capture'?'RADIOSTACJE':'POSTERUNKI'}</span></div>`;
@@ -711,6 +787,10 @@ $('touch-split').onclick=splitSquad;$('touch-merge').onclick=mergeSquad;
 $('touch-lasso').onclick=()=>{state.lassoMode=!state.lassoMode;$('touch-lasso').classList.toggle('active',state.lassoMode);toast(state.lassoMode?'Zakreśl pętlę wokół żołnierzy':'Lasso wyłączone');};
 $('touch-center').onclick=()=>{state.follow=true;regroup();};
 new ResizeObserver(resize).observe($('battlefield'));
+syncTouchUI();
+for(const query of ['(pointer: coarse)','(hover: none)','(max-width: 600px)','(max-height: 500px)']){
+  window.matchMedia?.(query)?.addEventListener?.('change',syncTouchUI);
+}
 const hasMissionLink=(urlParams.has('seed')&&Number.isInteger(initialSeed)&&initialSeed>=0)||(Number.isInteger(initialMission)&&initialMission>=1&&initialMission<=999);
 if(!loadProgress()){
   initMission(Number.isInteger(initialSeed)&&urlParams.has('seed')&&initialSeed>=0?initialSeed:freshSeed());showOverlay('briefing');

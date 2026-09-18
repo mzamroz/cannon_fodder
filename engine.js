@@ -140,7 +140,7 @@ export function generateMap(seed,mission=1) {
   for(let i=0;i<hazardCount;i++){
     const kind=biome.id==='jungle'?'bamboo':'mine';
     const spot=placeNear(world(junctions[i%junctions.length]),180,480);
-    if([...huts,...sites].every(p=>distance(p,spot)>150))mines.push({...spot,kind,armed:true,exploded:false,reveal:0});
+    if([...huts,...sites].every(p=>distance(p,spot)>150))mines.push({...spot,kind,armed:true,exploded:false,reveal:1});
   }
   if(mission>=5){
     const turretN=biome.id==='base'?2:1;

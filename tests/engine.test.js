@@ -125,6 +125,15 @@ test('campaign roster, promotions and permadeath',()=>{
   const stats=rankStats(7);assert.ok(stats.range>rankStats(0).range);assert.ok(stats.cooldown<rankStats(0).cooldown);
 });
 
+test('mines spawn fully visible from mission two',()=>{
+  const maps=Array.from({length:20},(_,i)=>generateMap(i+1,2+i%8));
+  const mines=maps.flatMap(m=>m.mines);
+  assert.ok(mines.length>=10);
+  assert.ok(mines.every(m=>m.reveal===1&&m.armed&&!m.exploded));
+  assert.ok(mines.some(m=>m.kind==='mine'));
+  assert.ok(maps.some(m=>m.biome.id==='jungle'&&m.mines.some(mine=>mine.kind==='bamboo')));
+});
+
 test('huts emit a rifleman until destroyed',()=>{
   const map=generateMap(9,1),before=map.enemies.length;
   map.huts[0].spawnTimer=0;spawnFromHuts(map,0.05);

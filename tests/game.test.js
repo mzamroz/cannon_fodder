@@ -263,6 +263,17 @@ test('rockets consume a separate ammo pool and huts still fall',()=>{
   assert.equal(hut.hp,0);
 });
 
+test('mines are visible immediately and still detonate on contact',()=>{
+  const g=game(2);g.startMission();
+  const mine=g.map.mines[0];
+  assert.ok(mine);assert.equal(mine.reveal,1);assert.equal(mine.exploded,false);
+  g.tick(1);assert.equal(mine.reveal,1);assert.equal(mine.exploded,false);
+  g.render();
+  Object.assign(g.squad[0],{x:mine.x,y:mine.y});
+  g.tick(.02);
+  assert.equal(mine.exploded,true);assert.equal(mine.armed,false);
+});
+
 test('campaign ends when the recruit pool is empty',()=>{
   const g=game();g.startMission();
   g.state.campaign.roster.forEach(r=>r.dead=true);
